@@ -1,4 +1,4 @@
-const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbw99yrFqf3LEbILo-8XYiDrN42E0RPQ9fmstbCe75g72a0qNyZfXGZ8FOlP4MW8qAz8Cw/exec";
+const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbyjXx_GY6R47ZZ6Yj9CNIywgK5PvFh50a0vlXWNBw4-ePHAyw_crZJPKnj3pZu3AHM8vg/exec";
 
 let globalRawData = [];
 let kodeSkpdAktif = ""; 
