@@ -639,7 +639,7 @@ function kalkulasiKombinasi() {
         alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0';
         icon.className = 'fa-solid fa-circle-xmark fs-3 me-3 text-danger';
         title.innerText = 'KELEBIHAN DANA';
-        desc.innerHTML = `Total perhitungan Anda <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Melebihi SIPD sebesar <b>Rp${selisih.toLocaleString('id-ID')}</b>. Periksa angka Anda!`;
+        desc.innerHTML = `Total perhitungan Anda <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Selisih senilai <b>Rp${selisih.toLocaleString('id-ID')}</b>. Periksa angka Anda!`;
     }
 }
 
