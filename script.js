@@ -515,17 +515,36 @@ function setMode() {
 function tambahBaris(ur = "", v = "", s = "", h = "") {
     let container = document.getElementById('dynamicRows');
     let div = document.createElement('div');
-    div.className = "row mb-2 align-items-start"; 
+    
+    div.className = "row mb-3 align-items-center pb-2 border-bottom border-light"; 
     let hFormatted = h ? h.toLocaleString('id-ID') : "";
 
+    // KECERDASAN DIPULIHKAN: Class 'uraian', 'vol', 'satuan', dan 'harga' dikembalikan 
+    // agar mesin kalkulator bisa mendeteksi angka kembali secara presisi!
     div.innerHTML = `
-        <div class="col-4"><textarea class="form-control form-control-sm uraian" rows="2" placeholder="Uraian (Cth: ATK)" style="resize:none;">${ur}</textarea></div>
-        <div class="col-2"><input type="number" class="form-control form-control-sm vol" placeholder="Vol" oninput="kalkulasiKombinasi()" value="${v}"></div>
-        <div class="col-2"><input type="text" class="form-control form-control-sm satuan" placeholder="Satuan" value="${s}"></div>
-        <div class="col-3"><input type="text" class="form-control form-control-sm harga" placeholder="Harga (Rp)" oninput="formatRibuan(this); kalkulasiKombinasi()" value="${hFormatted}"></div>
-        <div class="col-1 text-end align-self-center">
-            <div class="fw-bold subtotal-txt mb-1" style="font-size: 11px; color: #16a34a;">0</div>
-            <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.remove(); kalkulasiKombinasi();"><i class="fa-solid fa-trash"></i></button>
+        <div class="col-4">
+            <textarea class="form-control textarea-smart p-2 uraian" rows="1" placeholder="Uraian (Cth: ATK)" style="resize:none; font-size: 12px;">${ur}</textarea>
+        </div>
+        <div class="col-2">
+            <input type="number" class="form-control form-control-sm text-center border-light-subtle shadow-none vol" placeholder="Vol" oninput="kalkulasiKombinasi()" value="${v}" style="font-size: 12px; background-color: #f8fafc;">
+        </div>
+        <div class="col-2">
+            <input type="text" class="form-control form-control-sm text-center border-light-subtle shadow-none satuan" placeholder="Satuan" value="${s}" style="font-size: 12px; background-color: #f8fafc;">
+        </div>
+        <div class="col-3">
+            <input type="text" class="form-control form-control-sm text-end border-light-subtle shadow-none harga" placeholder="Harga (Rp)" oninput="formatRibuan(this); kalkulasiKombinasi()" value="${hFormatted}" style="font-size: 12px; background-color: #f8fafc;">
+        </div>
+        <div class="col-1 d-flex flex-column align-items-end justify-content-center">
+            <div class="fw-bold subtotal-txt text-dark mb-1" style="font-size: 12px; letter-spacing: 0.3px;">0</div>
+            
+            <button class="btn btn-sm p-0 border-0 shadow-none text-danger" 
+                    style="opacity: 0.5; transition: all 0.2s ease-in-out;" 
+                    onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)';" 
+                    onmouseout="this.style.opacity='0.5'; this.style.transform='scale(1)';" 
+                    onclick="this.parentElement.parentElement.remove(); kalkulasiKombinasi();" 
+                    title="Hapus Baris">
+                <i class="fa-regular fa-trash-can" style="font-size: 14px;"></i>
+            </button>
         </div>
     `;
     container.appendChild(div);
@@ -862,7 +881,7 @@ function simpanKeCloud() {
     fetch(SCRIPT_URL_DATABASE + "?action=save", {
         method: "POST", body: JSON.stringify({ tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
     }).then(r => r.json()).then(res => {
-        if(res.status === 'success') Swal.fire('Berhasil!', 'Data Anda Berhasil disimpan.', 'success');
+        if(res.status === 'success') Swal.fire('Berhasil!', 'Draf tersimpan di Server Kabupaten.', 'success');
         else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
     }).catch(() => Swal.fire('Error', 'Gagal server.', 'error'));
 }
