@@ -31,19 +31,29 @@
                 <select id="selectTahun" class="form-select form-select-sm" onchange="applyFilters()">                    
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-bold text-secondary" style="font-family: Arial;">Periode Laporan</label>
                 <select id="selectPeriode" class="form-select form-select-sm" onchange="applyFilters()">
-                    <option value="Periode: Januari s.d Juni">Semester I (Jan - Jun)</option>
-                    <option value="per Tanggal 31 Desember">1 Tahun (per 31 Des)</option>
+                    <option value="Periode: Januari s.d Juni">Semester I</option>
+                    <option value="per Tanggal 31 Desember">Semester II</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-bold text-secondary" style="font-family: Arial;">Mulai Halaman</label>
                 <input type="number" id="inputHalaman" class="form-control form-control-sm" value="1">
             </div>
-            <div class="col-md-5">
-                <label class="form-label small fw-bold text-secondary" style="font-family: Arial;">Upload Data LRA (Excel SIPD)</label>
+            
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary" style="font-family: Arial;">Filter Data</label>
+                <select id="selectFilterBelanja" class="form-select form-select-sm border-primary" style="background-color:#eff6ff;" onchange="terapkanFilterBelanja()">
+                    <option value="semua">Semua Rincian</option>
+                    <option value="operasi">Belanja Operasi</option>
+                    <option value="modal">Belanja Modal</option>
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary" style="font-family: Arial;">Upload Data LRA</label>
                 <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="form-control form-control-sm">
             </div>
         </div>
