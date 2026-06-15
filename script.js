@@ -641,11 +641,11 @@ function simpanDariModal() {
 function cetakPro() {
     let tbodyLama = document.getElementById('containerRender');
     if(tbodyLama.children.length === 0 || tbodyLama.innerText.includes('Menunggu')) {
-        Swal.fire('Data Kosong', 'Upload Excel SIPD terlebih dahulu Bos.', 'warning');
+        Swal.fire('Data Kosong', 'Upload Excel LRA Per Pogram dari SIPD terlebih dahulu.', 'warning');
         return;
     }
 
-    Swal.fire({ title: 'Menyusun Kertas...', text: 'Engine AI sedang memindai koordinat fisik kertas Anda...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({ title: 'Tunggu Sebentar Yah...', text: 'Sedang Memproses Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     setTimeout(() => {
         let mulaiHalaman = parseInt(document.getElementById('inputHalaman').value) || 1;
