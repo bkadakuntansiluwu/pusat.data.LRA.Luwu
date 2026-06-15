@@ -862,7 +862,7 @@ function simpanKeCloud() {
     fetch(SCRIPT_URL_DATABASE + "?action=save", {
         method: "POST", body: JSON.stringify({ tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
     }).then(r => r.json()).then(res => {
-        if(res.status === 'success') Swal.fire('Berhasil!', 'Draf tersimpan di Server Kabupaten.', 'success');
+        if(res.status === 'success') Swal.fire('Berhasil!', 'Data Anda Berhasil disimpan.', 'success');
         else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
     }).catch(() => Swal.fire('Error', 'Gagal server.', 'error'));
 }
