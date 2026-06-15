@@ -137,12 +137,14 @@ function processAndBuildLRA() {
     let trackerKode = "";
 
     // =========================================================================
-    // 1. SENSOR RADAR KOLOM AI: Pelacak "Anggaran", "Realisasi", "Operasi", "Modal"
+    // 1. SENSOR RADAR KOLOM AI: Pelacak "Anggaran", "Realisasi", "Operasi", "Modal", "BTT", "Transfer"
     // =========================================================================
     let colAnggaran = [];
     let colRealisasi = [];
-    let colOperasi = []; // Memori Kolom Operasi
-    let colModal = [];   // Memori Kolom Modal
+    let colOperasi = []; 
+    let colModal = [];   
+    let colBtt = [];      // Memori Kolom BTT
+    let colTransfer = []; // Memori Kolom Transfer
     let maxAnggaranCount = 0;
 
     for (let r = 0; r < 15 && r < globalRawData.length; r++) {
@@ -158,12 +160,11 @@ function processAndBuildLRA() {
             if (cellVal === 'anggaran') tempAng.push(c);
             else if (cellVal === 'realisasi') tempRea.push(c);
             
-            // Tangkap Koordinat Header "Operasi" & "Modal" (Dari Excel SIPD)
-            if (cellVal === 'operasi') {
-                colOperasi.push(c); colOperasi.push(c + 1); // Uangnya pasti di kolom ini dan sebelahnya
-            } else if (cellVal === 'modal') {
-                colModal.push(c); colModal.push(c + 1);
-            }
+            // Tangkap Koordinat Header "Operasi", "Modal", "BTT", "Transfer"
+            if (cellVal === 'operasi') { colOperasi.push(c); colOperasi.push(c + 1); } 
+            else if (cellVal === 'modal') { colModal.push(c); colModal.push(c + 1); }
+            else if (cellVal.includes('tak terduga')) { colBtt.push(c); colBtt.push(c + 1); }
+            else if (cellVal.includes('transfer')) { colTransfer.push(c); colTransfer.push(c + 1); }
         }
         
         if (tempAng.length > maxAnggaranCount) {
@@ -175,8 +176,8 @@ function processAndBuildLRA() {
     // Fallback Jaring Pengaman (Kalau format Excel hancur)
     if (colAnggaran.length === 0) colAnggaran = [5, 7, 9, 11];
     if (colRealisasi.length === 0) colRealisasi = [6, 8, 10, 12];
-    if (colOperasi.length === 0) colOperasi = [5, 6]; // Posisi default SIPD
-    if (colModal.length === 0) colModal = [7, 8];     // Posisi default SIPD
+    if (colOperasi.length === 0) colOperasi = [5, 6]; 
+    if (colModal.length === 0) colModal = [7, 8];     
     // =========================================================================
 
     for (let i = 0; i < globalRawData.length; i++) {
@@ -286,17 +287,17 @@ function processAndBuildLRA() {
         let rowID = `R_${safeKode}_${safeUraian}`;
 
         // =========================================================================
-        // 4. RENDER TOMBOL CERDAS
+        // 4. RENDER TOMBOL CERDAS (DESAIN MINIMALIS & PREMIUM)
         // =========================================================================
         if (isBarisJumlah) {
             // Kosong, tanpa tombol untuk baris surplus/defisit/jumlah
         } else if (isRincian) {
             filePenjelasanHtml = `
                 <div class="no-print">
-                    <button id="btn_${rowID}" class="btn btn-sm w-100 fw-bold btn-secondary shadow-sm text-start" 
-                            style="font-family:Arial; font-size:11px; padding: 6px 10px;"
+                    <button id="btn_${rowID}" class="btn btn-sm w-100 text-start" 
+                            style="font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 4px; transition: all 0.2s;"
                             onclick="bukaAsisten('${rowID}', '${cleanKode}', '${cleanUraian}', ${realisasi})">
-                        <i class="fa-solid fa-pen"></i> Isi Penjelasan Rincian Belanja
+                        <i class="fa-regular fa-pen-to-square text-secondary me-1"></i> Isi Penjelasan Rincian Belanja
                     </button>
                 </div>
                 <div id="print_${rowID}" class="print-view-text"></div>
@@ -305,10 +306,10 @@ function processAndBuildLRA() {
         } else {
             filePenjelasanHtml = `
                 <div class="no-print">
-                    <button id="btn_${rowID}" class="btn btn-sm w-100 fw-bold btn-outline-dark shadow-sm text-start" 
-                            style="font-family:Arial; font-size:11px; padding: 6px 10px; border-style: dashed;"
+                    <button id="btn_${rowID}" class="btn btn-sm w-100 text-start" 
+                            style="font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #ffffff; border: 1px solid #e2e8f0; color: #64748b; border-radius: 4px; transition: all 0.2s;"
                             onclick="bukaKeterangan('${rowID}', '${cleanKode}', '${cleanUraian}')">
-                        <i class="fa-solid fa-map-pin text-primary"></i> Isi Keterangan
+                        <i class="fa-regular fa-comment-dots text-muted me-1"></i>
                     </button>
                 </div>
                 <div id="print_${rowID}" class="print-view-text fw-bold text-dark" style="margin-top: 5px; font-size: 11px;"></div>
@@ -335,37 +336,43 @@ function processAndBuildLRA() {
         if (isRincian && !isBarisJumlah) {
             
             // LAPIS 1: SENSOR POSISI UANG (Membaca Angka dari Kolom Excel)
-            let valOperasi = 0;
-            colOperasi.forEach(idx => { valOperasi += Math.abs(parseIndonesianNumber(row[idx])); });
-            let valModal = 0;
-            colModal.forEach(idx => { valModal += Math.abs(parseIndonesianNumber(row[idx])); });
+            let valOperasi = 0; colOperasi.forEach(idx => { valOperasi += Math.abs(parseIndonesianNumber(row[idx])); });
+            let valModal = 0; colModal.forEach(idx => { valModal += Math.abs(parseIndonesianNumber(row[idx])); });
+            let valBtt = 0; colBtt.forEach(idx => { valBtt += Math.abs(parseIndonesianNumber(row[idx])); });
+            let valTransfer = 0; colTransfer.forEach(idx => { valTransfer += Math.abs(parseIndonesianNumber(row[idx])); });
 
             let teksUraianLcase = textUraian.toLowerCase();
 
-            // Eksekusi Sensor 1
-            if (valOperasi > 0 && valModal === 0) {
-                kategori = 'operasi'; // Uangnya jatuh lurus di bawah kolom Operasi
-            } else if (valModal > 0 && valOperasi === 0) {
-                kategori = 'modal';   // Uangnya jatuh lurus di bawah kolom Modal
-            } 
-            // LAPIS 2: SENSOR LINGUISTIK BAHASA (Jika nilai uang kosong/Nol)
-            else if (teksUraianLcase.includes('honor') || teksUraianLcase.includes('jasa') || teksUraianLcase.includes('barang') || teksUraianLcase.includes('makan') || teksUraianLcase.includes('perjalanan') || teksUraianLcase.includes('atk') || teksUraianLcase.includes('gaji') || teksUraianLcase.includes('kertas') || teksUraianLcase.includes('cetak') || teksUraianLcase.includes('habis pakai') || teksUraianLcase.includes('listrik') || teksUraianLcase.includes('air') || teksUraianLcase.includes('sewa')) {
+            // Eksekusi Sensor 1: Lihat uangnya jatuh di bawah kolom apa?
+            if (valOperasi > 0 && valModal === 0 && valBtt === 0 && valTransfer === 0) {
+                kategori = 'operasi'; 
+            } else if (valModal > 0 && valOperasi === 0 && valBtt === 0 && valTransfer === 0) {
+                kategori = 'modal';   
+            } else if (valBtt > 0 && valOperasi === 0 && valModal === 0 && valTransfer === 0) {
+                kategori = 'btt';
+            } else if (valTransfer > 0 && valOperasi === 0 && valModal === 0 && valBtt === 0) {
+                kategori = 'transfer';
+            }
+            // LAPIS 2: SENSOR LINGUISTIK (Kamus Otak AI - Jika nilai uang nol/rincian teks)
+            else if (teksUraianLcase.includes('tak terduga') || teksUraianLcase.includes('darurat') || teksUraianLcase.includes('kejadian luar biasa')) {
+                kategori = 'btt';
+            } else if (teksUraianLcase.includes('transfer') || teksUraianLcase.includes('bantuan keuangan') || teksUraianLcase.includes('bagi hasil') || teksUraianLcase.includes('bantuan sosial') || teksUraianLcase.includes('hibah') || teksUraianLcase.includes('subsidi') || teksUraianLcase.includes('dana desa')) {
+                kategori = 'transfer';
+            } else if (teksUraianLcase.includes('honor') || teksUraianLcase.includes('jasa') || teksUraianLcase.includes('barang') || teksUraianLcase.includes('makan') || teksUraianLcase.includes('perjalanan') || teksUraianLcase.includes('atk') || teksUraianLcase.includes('gaji') || teksUraianLcase.includes('kertas') || teksUraianLcase.includes('cetak') || teksUraianLcase.includes('habis pakai') || teksUraianLcase.includes('listrik') || teksUraianLcase.includes('air') || teksUraianLcase.includes('sewa')) {
                 kategori = 'operasi';
             } else if (teksUraianLcase.includes('modal') || teksUraianLcase.includes('aset') || teksUraianLcase.includes('tanah') || teksUraianLcase.includes('mesin') || teksUraianLcase.includes('gedung') || teksUraianLcase.includes('bangunan') || teksUraianLcase.includes('jalan') || teksUraianLcase.includes('jaringan') || teksUraianLcase.includes('irigasi') || teksUraianLcase.includes('peralatan') || teksUraianLcase.includes('kendaraan')) {
                 kategori = 'modal';
             } 
-            // LAPIS 3: SENSOR KODE STANDAR (Jaring Pengaman Terakhir)
-            else if (kodeRekening.startsWith('5.1') || trackerKode.startsWith('5.1')) {
-                kategori = 'operasi';
-            } else if (kodeRekening.startsWith('5.2') || trackerKode.startsWith('5.2')) {
-                kategori = 'modal';
-            } else {
-                kategori = 'lainnya'; 
-            }
+            // LAPIS 3: SENSOR KODE STANDAR (Hanya Sebagai Jaring Pengaman Terakhir)
+            else if (kodeRekening.startsWith('5.1') || trackerKode.startsWith('5.1')) kategori = 'operasi';
+            else if (kodeRekening.startsWith('5.2') || trackerKode.startsWith('5.2')) kategori = 'modal';
+            else if (kodeRekening.startsWith('5.3') || trackerKode.startsWith('5.3')) kategori = 'btt';
+            else if (kodeRekening.startsWith('5.4') || trackerKode.startsWith('5.4')) kategori = 'transfer';
+            else kategori = 'lainnya'; 
         }
         tr.dataset.kategori = kategori;
         
-        // +++++ TAMBAHAN BARU: MEMORI REKALKULASI DINAMIS +++++
+        // +++++ MEMORI REKALKULASI DINAMIS +++++
         tr.dataset.oriAng = anggaran || 0;
         tr.dataset.oriRea = realisasi || 0;
         tr.dataset.oriAngStr = strAng;
@@ -374,9 +381,12 @@ function processAndBuildLRA() {
         tr.dataset.oriPerStr = strPersen;
         // ---> AKHIR SISIPAN <---
 
+        // TAMBAHAN KOSMETIK BOS: Jika ini baris jumlah, buat Center, Kapital, dan Tebal!
+        let kelasUraian = isBarisJumlah ? "uraian-cell text-center text-uppercase fw-bold text-dark" : "uraian-cell";
+
         tr.innerHTML = `
             <td>${displayKode}</td>
-            <td class="uraian-cell">${uraian}</td>
+            <td class="${kelasUraian}">${uraian}</td>
             <td class="text-end">${strAng}</td>
             <td class="text-end">${strRea}</td>
             <td class="text-end">${strSel}</td>
@@ -409,12 +419,16 @@ function simpanKeterangan() {
     document.getElementById('print_' + rowID).innerText = teks;
     
     let btn = document.getElementById('btn_' + rowID);
-    if (teks.trim() === '') {
-        btn.className = 'btn btn-sm w-100 fw-bold btn-outline-dark shadow-sm text-start';
-        btn.innerHTML = '<i class="fa-solid fa-map-pin text-primary"></i> Isi Keterangan';
-    } else {
-        btn.className = 'btn btn-sm w-100 fw-bold btn-dark shadow-sm text-start';
-        btn.innerHTML = '<i class="fa-solid fa-check-circle text-success"></i> Keterangan Disimpan';
+    if (btn) {
+        if (teks.trim() === '') {
+            btn.className = 'btn btn-sm w-100 text-start';
+            btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #ffffff; border: 1px solid #e2e8f0; color: #64748b; border-radius: 4px;";
+            btn.innerHTML = '<i class="fa-regular fa-comment-dots text-muted me-1"></i> Isi Keterangan';
+        } else {
+            btn.className = 'btn btn-sm w-100 text-start fw-bold';
+            btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f8fafc; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px;";
+            btn.innerHTML = '<i class="fa-solid fa-check text-muted me-1"></i> Keterangan Disimpan';
+        }
     }
     modalKeterangan.hide();
 }
@@ -463,24 +477,34 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
     let totalHitung = hitungTotalDariTeks(printText);
     let selisih = totalHitung - realisasi;
     let formatRp = { minimumFractionDigits: 0 };
+    
+    // Set dasar class tombol agar seragam
+    btn.className = 'btn btn-sm w-100 text-start';
 
     if (printText.trim() === '') {
-        btn.className = 'btn btn-sm w-100 fw-bold btn-secondary shadow-sm text-start';
-        btn.innerHTML = '<i class="fa-solid fa-pen"></i> Isi Penjelasan';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 4px;";
+        btn.innerHTML = '<i class="fa-regular fa-pen-to-square text-secondary me-1"></i> Isi Penjelasan';
     } else if (realisasi === 0 && printText.trim() !== '') {
-        btn.className = 'btn btn-sm w-100 fw-bold btn-success shadow-sm text-start';
-        btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Catatan Tersimpan';
+        btn.className = 'btn btn-sm w-100 text-start fw-bold';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f8fafc; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px;";
+        btn.innerHTML = '<i class="fa-solid fa-check text-muted me-1"></i> Catatan Tersimpan';
     } else if (Math.abs(selisih) < 1) { 
-        btn.className = 'btn btn-sm w-100 fw-bold btn-success shadow-sm text-start';
-        btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Sesuai / Balance';
+        // Hijau Pastel Sangat Lembut & Bersih (Sesuai)
+        btn.className = 'btn btn-sm w-100 text-start fw-bold';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
+        btn.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Sesuai / Balance';
     } else if (selisih < 0) { 
+        // Kuning-Orange Tingkat Rendah (Kurang Dana)
         let fKurang = Math.abs(selisih).toLocaleString('id-ID', formatRp);
-        btn.className = 'btn btn-sm w-100 fw-bold btn-warning shadow-sm text-dark text-start';
-        btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Kurang Rp ${fKurang}`;
+        btn.className = 'btn btn-sm w-100 text-start fw-bold';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fffde7; border: 1px solid #fef08a; color: #854d0e; border-radius: 4px;";
+        btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Kurang Rp ${fKurang}`;
     } else { 
+        // Merah Lembut / Soft Rose (Kelebihan Dana)
         let fLebih = selisih.toLocaleString('id-ID', formatRp);
-        btn.className = 'btn btn-sm w-100 fw-bold btn-danger shadow-sm text-start';
-        btn.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> Lebih Rp ${fLebih}`;
+        btn.className = 'btn btn-sm w-100 text-start fw-bold';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fef2f2; border: 1px solid #fecdd3; color: #991b1b; border-radius: 4px;";
+        btn.innerHTML = `<i class="fa-solid fa-circle-xmark text-danger me-1"></i> Lebih Rp ${fLebih}`;
     }
 }
 
@@ -838,7 +862,7 @@ function simpanKeCloud() {
     fetch(SCRIPT_URL_DATABASE + "?action=save", {
         method: "POST", body: JSON.stringify({ tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
     }).then(r => r.json()).then(res => {
-        if(res.status === 'success') Swal.fire('Berhasil!', 'Data Anda Berhasil tersimpan.', 'success');
+        if(res.status === 'success') Swal.fire('Berhasil!', 'Draf tersimpan di Server Kabupaten.', 'success');
         else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
     }).catch(() => Swal.fire('Error', 'Gagal server.', 'error'));
 }
@@ -876,8 +900,9 @@ function muatDataDariCloud() {
                         
                         let btn = document.getElementById('btn_' + rowId);
                         if (btn && btn.innerHTML.includes('Isi Keterangan')) {
-                            btn.className = 'btn btn-sm w-100 fw-bold btn-dark shadow-sm text-start';
-                            btn.innerHTML = '<i class="fa-solid fa-check-circle text-success"></i> Keterangan Disimpan';
+                            btn.className = 'btn btn-sm w-100 text-start fw-bold';
+                            btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f8fafc; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px;";
+                            btn.innerHTML = '<i class="fa-solid fa-check text-muted me-1"></i> Keterangan Disimpan';
                         } else {
                             perbaruiTombolStatus(rowId, printText, realisasi);
                         }
@@ -900,17 +925,23 @@ function terapkanFilterBelanja() {
     let selectObj = document.getElementById('selectFilterBelanja');
     if (!selectObj) return; 
     let filter = selectObj.value;
+    let tbody = document.getElementById('containerRender');
+    
+    // Hapus Baris Total Dinamis Lama (Jika ada dari filter sebelumnya)
+    let oldTotalRow = document.getElementById('rowDynamicTotal');
+    if (oldTotalRow) oldTotalRow.remove();
+
     let rows = Array.from(document.querySelectorAll('#containerRender tr'));
 
-    // TAHAP 1: Sortir Kategori Dasar
+    // TAHAP 1: Sortir Kategori Dasar (Logika Universal Cerdas)
     rows.forEach(tr => {
         let kat = tr.dataset.kategori;
-        tr.style.display = ''; 
+        tr.style.display = ''; // Munculkan semua defaultnya
 
-        if (filter === 'operasi') {
-            if (kat === 'modal' || kat === 'lainnya') tr.style.display = 'none';
-        } else if (filter === 'modal') {
-            if (kat === 'operasi' || kat === 'lainnya') tr.style.display = 'none';
+        if (filter !== 'semua') {
+            if (kat !== 'induk' && kat !== filter) {
+                tr.style.display = 'none';
+            }
         }
     });
 
@@ -935,7 +966,9 @@ function terapkanFilterBelanja() {
         }
     }
 
-    // TAHAP 3: REKALKULASI TOTAL NILAI INDUK & GRAND TOTAL (SUPER CERDAS)
+    // TAHAP 3: REKALKULASI TOTAL NILAI INDUK & GRAND TOTAL
+    let grandAng = 0; let grandRea = 0; // Memori untuk Baris Total Bawah
+
     if (filter === 'semua') {
         // Jika kembali ke "Semua Rincian", pulihkan nilai asli dari memori
         rows.forEach(tr => {
@@ -949,7 +982,7 @@ function terapkanFilterBelanja() {
     } else {
         // Jika sedang difilter, HITUNG ULANG total secara instan
         rows.forEach((tr, i) => {
-            if (tr.style.display === 'none') return; // Abaikan yang tersembunyi
+            if (tr.style.display === 'none') return; 
             
             if (tr.dataset.kategori === 'induk') {
                 let textUraianLcase = tr.children[1].innerText.toLowerCase();
@@ -959,51 +992,81 @@ function terapkanFilterBelanja() {
                 let sumAng = 0; let sumRea = 0;
 
                 if (isGrandTotal) {
-                    // Kecerdasan 1: Jika baris "Jumlah Keseluruhan", jumlahkan semua rincian yang tersisa di layar!
-                    rows.forEach(childTr => {
-                        if (childTr.style.display !== 'none' && childTr.dataset.kategori !== 'induk') {
-                            sumAng += parseFloat(childTr.dataset.oriAng) || 0;
-                            sumRea += parseFloat(childTr.dataset.oriRea) || 0;
-                        }
-                    });
+                                        
+                    tr.style.display = 'none'; 
                 } else {
-                    // Kecerdasan 2: Jika Judul Program/Kegiatan, jumlahkan hanya rincian anak di bawahnya!
+                    // Menjumlahkan rincian untuk Induk Program/Kegiatan (Di Atas)
                     for (let j = i + 1; j < rows.length; j++) {
                         let childTr = rows[j];
                         let childPad = parseInt(childTr.dataset.pad) || 0;
-                        
-                        if (childPad <= padLvl) break; // Berhenti jika masuk ke Program/Induk lain
-                        
+                        if (childPad <= padLvl) break; 
                         if (childTr.style.display !== 'none' && childTr.dataset.kategori !== 'induk') {
                             sumAng += parseFloat(childTr.dataset.oriAng) || 0;
                             sumRea += parseFloat(childTr.dataset.oriRea) || 0;
                         }
                     }
+
+                    // Format angka Induk
+                    let selisih = sumRea - sumAng;
+                    let persentase = sumAng > 0 ? ((sumRea / sumAng) * 100).toFixed(2) : '0,00';
+                    let formatRp = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+                    
+                    let strAng = sumAng !== 0 ? sumAng.toLocaleString('id-ID', formatRp) : '0,00';
+                    let strRea = sumRea !== 0 ? sumRea.toLocaleString('id-ID', formatRp) : '0,00';
+                    let strSel = selisih !== 0 ? (selisih < 0 ? '(' + Math.abs(selisih).toLocaleString('id-ID', formatRp) + ')' : selisih.toLocaleString('id-ID', formatRp)) : '0,00';
+                    let strPer = persentase.replace('.', ',');
+
+                    if (tr.dataset.oriAngStr === '') { strAng = ''; strRea = ''; strSel = ''; strPer = ''; }
+
+                    let tdAng = tr.children[2]; let tdRea = tr.children[3];
+                    let tdSel = tr.children[4]; let tdPer = tr.children[5];
+                    if(tdAng) tdAng.innerText = strAng;
+                    if(tdRea) tdRea.innerText = strRea;
+                    if(tdSel) tdSel.innerText = strSel;
+                    if(tdPer) tdPer.innerText = strPer;
                 }
-
-                // Format hasil hitungan baru menjadi format Uang Rupiah yang rapi
-                let selisih = sumRea - sumAng;
-                let persentase = sumAng > 0 ? ((sumRea / sumAng) * 100).toFixed(2) : '0,00';
-                let formatRp = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-                
-                let strAng = sumAng !== 0 ? sumAng.toLocaleString('id-ID', formatRp) : '0,00';
-                let strRea = sumRea !== 0 ? sumRea.toLocaleString('id-ID', formatRp) : '0,00';
-                let strSel = selisih !== 0 ? (selisih < 0 ? '(' + Math.abs(selisih).toLocaleString('id-ID', formatRp) + ')' : selisih.toLocaleString('id-ID', formatRp)) : '0,00';
-                let strPer = persentase.replace('.', ',');
-
-                // Keamanan: Jangan isi angka jika baris aslinya memang kosong (seperti baris "KODE REKENING")
-                if (tr.dataset.oriAngStr === '') {
-                    strAng = ''; strRea = ''; strSel = ''; strPer = '';
-                }
-
-                // Tembakkan angka hitungan baru ke layar
-                let tdAng = tr.children[2]; let tdRea = tr.children[3];
-                let tdSel = tr.children[4]; let tdPer = tr.children[5];
-                if(tdAng) tdAng.innerText = strAng;
-                if(tdRea) tdRea.innerText = strRea;
-                if(tdSel) tdSel.innerText = strSel;
-                if(tdPer) tdPer.innerText = strPer;
+            } else if (tr.dataset.kategori === filter) {
+                // Sambil jalan, mesin menangkap nilai total khusus untuk baris paling bawah
+                grandAng += parseFloat(tr.dataset.oriAng) || 0;
+                grandRea += parseFloat(tr.dataset.oriRea) || 0;
             }
         });
+    }
+
+// TAHAP 4: INJEKSI BARIS TOTAL DINAMIS KE PALING BAWAH TABEL (SUPER CERDAS)
+    if (filter !== 'semua') {
+        let namaFilter = "KESELURUHAN";
+        if (filter === 'operasi') namaFilter = "BELANJA OPERASI";
+        else if (filter === 'modal') namaFilter = "BELANJA MODAL";
+        else if (filter === 'btt') namaFilter = "BELANJA TAK TERDUGA";
+        else if (filter === 'transfer') namaFilter = "BELANJA TRANSFER";
+
+        let grandSel = grandRea - grandAng;
+        let grandPer = grandAng > 0 ? ((grandRea / grandAng) * 100).toFixed(2).replace('.', ',') : '0,00';
+        let formatRp = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+        
+        let trTotal = document.createElement('tr');
+        trTotal.id = 'rowDynamicTotal';
+        trTotal.className = 'pad-lvl-1 style-bold';
+        
+        // CSS Profesional & Elegan (Standar Dokumen Keuangan Negara)
+        trTotal.style.backgroundColor = '#f8fafc'; // Abu-abu sangat muda (seperti header asli)
+        trTotal.style.borderTop = '2px solid #000'; // Garis hitam solid tegas
+        trTotal.style.borderBottom = '2px solid #000';
+        trTotal.dataset.pad = 1;
+
+        // Struktur Kolom (Hitam murni, bold, rapi tanpa icon norak)
+        trTotal.innerHTML = `
+            <td></td>
+            <td class="uraian-cell text-center text-uppercase text-dark" style="font-size: 12px; font-weight: 800; letter-spacing: 0.5px;">Jumlah</td>
+            <td class="text-end text-dark" style="font-weight: 800;">${grandAng !== 0 ? grandAng.toLocaleString('id-ID', formatRp) : '0,00'}</td>
+            <td class="text-end text-dark" style="font-weight: 800;">${grandRea !== 0 ? grandRea.toLocaleString('id-ID', formatRp) : '0,00'}</td>
+            <td class="text-end text-dark" style="font-weight: 800;">${grandSel !== 0 ? (grandSel < 0 ? '(' + Math.abs(grandSel).toLocaleString('id-ID', formatRp) + ')' : grandSel.toLocaleString('id-ID', formatRp)) : '0,00'}</td>
+            <td class="text-center text-dark" style="font-weight: 800;">${grandPer}</td>
+            <td></td>
+        `;
+        
+        // Letakkan baris ini di posisi paling ujung bawah!
+        tbody.appendChild(trTotal);
     }
 }
