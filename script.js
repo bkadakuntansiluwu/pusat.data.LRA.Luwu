@@ -1024,7 +1024,7 @@ function simpanKeCloud() {
 
 function muatDataDariCloud() {
     // 🛡️ SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
-    const DOMAIN_RESMI = "nama-akun.github.io"; 
+    const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
     if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
