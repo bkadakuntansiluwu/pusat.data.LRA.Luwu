@@ -523,8 +523,69 @@ function setMode() {
     setTimeout(() => { kalkulasiKombinasi(); }, 100); 
 }
 
-function tambahBaris(ur = "", v = "", s = "", h = "") {
-    let container = document.getElementById('dynamicRows');
+// === 1. GLOBAL VARIABEL BARU UNTUK MULTI-KELOMPOK ===
+let groupIdCounter = 0;
+
+// === 2. FUNGSI BARU: PENCIPTA KELOMPOK LOKASI/KEGIATAN ===
+function tambahKelompok(subText = "", items = []) {
+    groupIdCounter++;
+    let gId = 'group_' + groupIdCounter;
+    let container = document.getElementById('groupsContainer');
+    
+    let groupDiv = document.createElement('div');
+    // Tambahkan class 'group-container' agar bisa terdeteksi oleh mesin kalkulasi
+    groupDiv.className = "group-container border bg-white p-4 mb-4 position-relative shadow-sm";
+    groupDiv.style.borderRadius = "10px";
+    groupDiv.style.border = "1px solid #e2e8f0";
+    groupDiv.id = gId;
+    
+    // UI CERDAS: Tombol Hapus Grup (Lingkaran Merah Minimalis di Pojok)
+    groupDiv.innerHTML = `
+        <button class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-3" 
+                onclick="document.getElementById('${gId}').remove(); kalkulasiKombinasi();" 
+                title="Hapus Kelompok" 
+                style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-trash-can" style="font-size: 12px;"></i>
+        </button>
+
+        <div class="row mb-3">
+            <div class="col-12 mb-3 pe-5">
+                <label class="form-label fw-bold text-secondary" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Keterangan Lokasi / Kegiatan / Tgl</label>
+                <textarea class="form-control textarea-smart p-2 uraian-sub" rows="2" placeholder="Contoh: Perjalanan dinas ke Makassar..." onkeyup="kalkulasiKombinasi()">${subText}</textarea>
+            </div>
+        </div>
+
+        <div class="row mb-2 fw-bold text-secondary pb-1" style="font-size: 10px; font-family: Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">
+            <div class="col-4">Uraian Rincian Belanja</div>
+            <div class="col-2 text-center">Vol</div>
+            <div class="col-2 text-center">Satuan</div>
+            <div class="col-3 text-end">Harga (Rp)</div>
+            <div class="col-1 text-end">Total</div>
+        </div>
+        
+        <div id="rows_${gId}" class="item-rows-container mb-3"></div>
+        
+        <button class="btn btn-sm btn-outline-secondary fw-bold text-secondary w-100 py-1" onclick="tambahBaris('${gId}')" style="font-size: 11px; border-radius: 6px; border-style: dashed; border-width: 1px;">
+            <i class="fa-solid fa-plus me-1"></i> Tambah Baris Rincian
+        </button>
+    `;
+    
+    container.appendChild(groupDiv);
+    
+    if (items.length === 0) {
+        tambahBaris(gId);
+    } else {
+        items.forEach(item => tambahBaris(gId, item.u, item.v, item.s, item.h));
+    }
+    kalkulasiKombinasi();
+    
+    // Auto-scroll halus
+    setTimeout(() => { groupDiv.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 100);
+}
+
+// === 3. FUNGSI TAMBAH BARIS YANG DIPERBARUI (Fokus per Kelompok) ===
+function tambahBaris(groupId, ur = "", v = "", s = "", h = "") {
+    let container = document.getElementById('rows_' + groupId);
     let div = document.createElement('div');
     
     div.className = "row mb-3 align-items-center pb-2 border-bottom border-light"; 
@@ -532,7 +593,7 @@ function tambahBaris(ur = "", v = "", s = "", h = "") {
 
     div.innerHTML = `
         <div class="col-4">
-            <textarea class="form-control textarea-smart p-2 uraian" rows="2" placeholder="Masukkan uraian nama belanja" style="font-size: 12px; resize: vertical;">${ur}</textarea>
+            <textarea class="form-control textarea-smart p-2 uraian" rows="2" placeholder="Masukkan uraian belanja" style="font-size: 12px; resize: vertical;">${ur}</textarea>
         </div>
         <div class="col-2">
             <input type="number" class="form-control form-control-sm text-center border-light-subtle shadow-none vol" placeholder="Vol" oninput="kalkulasiKombinasi()" value="${v}" style="font-size: 12px; background-color: #f8fafc;">
@@ -545,87 +606,92 @@ function tambahBaris(ur = "", v = "", s = "", h = "") {
         </div>
         <div class="col-1 d-flex flex-column align-items-end justify-content-center">
             <div class="fw-bold subtotal-txt text-dark mb-1" style="font-size: 12px; letter-spacing: 0.3px;">0</div>
-            
             <button class="btn btn-sm p-0 border-0 shadow-none text-danger" 
                     style="opacity: 0.5; transition: all 0.2s ease-in-out;" 
                     onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)';" 
                     onmouseout="this.style.opacity='0.5'; this.style.transform='scale(1)';" 
-                    onclick="this.parentElement.parentElement.remove(); kalkulasiKombinasi();" 
-                    title="Hapus Baris">
+                    onclick="this.parentElement.parentElement.remove(); kalkulasiKombinasi();" title="Hapus Baris">
                 <i class="fa-regular fa-trash-can" style="font-size: 14px;"></i>
             </button>
         </div>
     `;
     container.appendChild(div);
     kalkulasiKombinasi();
-
-    // SUNTIKAN UX ENTERPRISE: Mesin otomatis men-scroll ke baris paling bawah saat baris baru ditambahkan!
-    container.scrollTop = container.scrollHeight;
 }
 
+// === 4. BUKA ASISTEN (Penyelamat Data Masa Lalu) ===
 function bukaAsisten(rowID, kodeRek, uraian, realisasi) {
     let nilaiLama = document.getElementById('val_' + rowID).value;
     document.getElementById('modalTargetRow').value = rowID;
     document.getElementById('modalTargetRealisasi').value = realisasi;
     
-    let judulRekening = kodeRek ? `${kodeRek} - ${uraian}` : uraian;
-    document.getElementById('modalUraian').innerText = judulRekening;
+    document.getElementById('modalUraian').innerText = kodeRek ? `${kodeRek} - ${uraian}` : uraian;
     document.getElementById('modalRealisasiTxt').innerText = "Rp " + realisasi.toLocaleString('id-ID');
     
-    // Reset Form
-    document.getElementById('modalSubJudul').value = "";
-    document.getElementById('dynamicRows').innerHTML = '';
+    // Bersihkan layar
+    document.getElementById('groupsContainer').innerHTML = '';
+    groupIdCounter = 0;
     
-    let itemsData = [];
+    let groupsData = [];
 
     if (nilaiLama && nilaiLama.trim() !== "") {
         try { 
             let parsed = JSON.parse(nilaiLama); 
-            if (parsed.items) {
-                // Kecerdasan: Jika ada data 'judul' sisa kemarin, gabungkan agar tidak hilang
-                document.getElementById('modalSubJudul').value = parsed.sub || parsed.judul || "";
-                itemsData = parsed.items;
+            // Cek jika datanya sudah Array (Format Super Baru)
+            if (Array.isArray(parsed) && parsed[0].items !== undefined) {
+                groupsData = parsed;
             } 
+            // Cek Format Lama (Hanya 1 grup)
+            else if (parsed.items) {
+                let textSub = parsed.sub || parsed.judul || "";
+                groupsData = [{ sub: textSub, items: parsed.items }];
+            } 
+            // Cek Format Sangat Lama (V.1)
             else if (parsed.data && Array.isArray(parsed.data)) {
-                itemsData = parsed.data;
+                groupsData = [{ sub: "", items: parsed.data }];
             } else if (parsed.data && typeof parsed.data === 'string') {
-                document.getElementById('modalSubJudul').value = parsed.data;
+                groupsData = [{ sub: parsed.data, items: [] }];
             }
         } catch(e) { 
-            document.getElementById('modalSubJudul').value = nilaiLama;
+            groupsData = [{ sub: nilaiLama, items: [] }];
         }
     }
 
-    if (itemsData.length === 0) {
-        tambahBaris();
+    if (groupsData.length === 0) {
+        tambahKelompok(); // Default buat 1 grup kosong
     } else {
-        itemsData.forEach(item => tambahBaris(item.u, item.v, item.s, item.h));
+        groupsData.forEach(g => tambahKelompok(g.sub, g.items));
     }
     
     kalkulasiKombinasi();
     modalAsisten.show();
 }
 
+// === 5. KALKULASI MENYELURUH (Scan Seluruh Kelompok) ===
 function kalkulasiKombinasi() {
     let realisasi = parseFloat(document.getElementById('modalTargetRealisasi').value);
     let totalHitung = 0;
-    
-    let sub = document.getElementById('modalSubJudul').value.trim();
-    let rows = document.querySelectorAll('#dynamicRows .row');
-    
-    let isKosong = (rows.length === 0 && sub === '');
-    let jumlahHuruf = sub.replace(/[^a-zA-Z]/g, '').length;
+    let jumlahHuruf = 0;
+    let isKosong = true;
 
-    rows.forEach(row => {
-        let v = parseFloat(row.querySelector('.vol').value) || 0;
-        let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
-        let h = parseFloat(hStr) || 0;
-        let subtotal = v * h;
-        row.querySelector('.subtotal-txt').innerText = subtotal.toLocaleString('id-ID');
-        totalHitung += subtotal;
-        
-        let ur = row.querySelector('.uraian').value;
-        jumlahHuruf += ur.replace(/[^a-zA-Z]/g, '').length;
+    // Scan setiap grup yang ada di layar
+    document.querySelectorAll('.group-container').forEach(group => {
+        let sub = group.querySelector('.uraian-sub').value.trim();
+        if(sub) isKosong = false;
+        jumlahHuruf += sub.replace(/[^a-zA-Z]/g, '').length;
+
+        group.querySelectorAll('.item-rows-container .row').forEach(row => {
+            let v = parseFloat(row.querySelector('.vol').value) || 0;
+            let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
+            let h = parseFloat(hStr) || 0;
+            let subtotal = v * h;
+            row.querySelector('.subtotal-txt').innerText = subtotal.toLocaleString('id-ID');
+            totalHitung += subtotal;
+            
+            let ur = row.querySelector('.uraian').value;
+            if(ur || v > 0 || h > 0) isKosong = false;
+            jumlahHuruf += ur.replace(/[^a-zA-Z]/g, '').length;
+        });
     });
 
     let alertBox = document.getElementById('alertSmart');
@@ -635,76 +701,82 @@ function kalkulasiKombinasi() {
     let selisih = totalHitung - realisasi;
 
     if (isKosong) {
-        alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0';
-        icon.className = 'fa-solid fa-pen-to-square fs-3 me-3 text-secondary';
+        alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0 py-2 px-3';
+        icon.className = 'fa-solid fa-pen-to-square fs-4 me-3 text-secondary';
         title.innerText = 'Silahkan input rincian anda';
-        desc.innerText = 'Isi Keterangan Kegiatan dan rincian form di bawah, sistem akan menghitung otomatis.';
+        desc.innerText = 'Gunakan tombol di bawah untuk menambah kelompok lokasi atau rincian.';
     } else if (realisasi === 0) {
-        alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0';
-        icon.className = 'fa-solid fa-info-circle fs-3 me-3 text-info';
+        alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0 py-2 px-3';
+        icon.className = 'fa-solid fa-info-circle fs-4 me-3 text-info';
         title.innerText = 'Teks Disimpan';
-        desc.innerText = 'Nilai realisasi kosong, catatan akan dilampirkan sebagai penjelas.';
+        desc.innerText = 'Catatan akan dilampirkan sebagai penjelas nilai kosong.';
     } else if (Math.abs(selisih) < 1) {
         if (jumlahHuruf < 15) {
-            alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0';
-            icon.className = 'fa-solid fa-circle-exclamation fs-3 me-3 text-danger';
+            alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0 py-2 px-3';
+            icon.className = 'fa-solid fa-circle-exclamation fs-4 me-3 text-danger';
             title.innerText = 'JUMLAH SESUAI, TAPI PENJELASAN DITOLAK!';
-            desc.innerHTML = `Total Rp${totalHitung.toLocaleString('id-ID')} sesuai, tapi <b>Teks Anda terlalu singkat!</b><br>Harap ketik Keterangan Kegiatan & Uraian dengan jelas.`;
+            desc.innerHTML = `Total Rp${totalHitung.toLocaleString('id-ID')} sesuai, tapi <b>Teks Anda terlalu singkat!</b>`;
         } else {
-            alertBox.className = 'alert alert-pro alert-pro-success d-flex align-items-center mb-0';
-            icon.className = 'fa-solid fa-check-circle fs-3 me-3 text-success';
+            alertBox.className = 'alert alert-pro alert-pro-success d-flex align-items-center mb-0 py-2 px-3';
+            icon.className = 'fa-solid fa-check-circle fs-4 me-3 text-success';
             title.innerText = 'JUMLAH RINCIAN SESUAI';
-            desc.innerText = `Total perhitungan Rp${totalHitung.toLocaleString('id-ID')} sesuai.`;
+            desc.innerText = `Total perhitungan Rp${totalHitung.toLocaleString('id-ID')} tervalidasi dan siap cetak.`;
         }
     } else if (selisih < 0) {
-        alertBox.className = 'alert alert-pro alert-pro-warning d-flex align-items-center mb-0';
-        icon.className = 'fa-solid fa-triangle-exclamation fs-3 me-3 text-warning';
+        alertBox.className = 'alert alert-pro alert-pro-warning d-flex align-items-center mb-0 py-2 px-3';
+        icon.className = 'fa-solid fa-triangle-exclamation fs-4 me-3 text-warning';
         title.innerText = 'NILAI MASIH KURANG DARI REALISASI';
-        desc.innerHTML = `Total perhitungan Anda baru <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Masih kurang <b>Rp${Math.abs(selisih).toLocaleString('id-ID')}</b> dari SIPD.`;
+        desc.innerHTML = `Baru <b>Rp${totalHitung.toLocaleString('id-ID')}</b>. Masih kurang <b>Rp${Math.abs(selisih).toLocaleString('id-ID')}</b> dari SIPD.`;
     } else {
-        alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0';
-        icon.className = 'fa-solid fa-circle-xmark fs-3 me-3 text-danger';
+        alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0 py-2 px-3';
+        icon.className = 'fa-solid fa-circle-xmark fs-4 me-3 text-danger';
         title.innerText = 'JUMLAH MELEBIHI REALISASI';
-        desc.innerHTML = `Total perhitungan Anda <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Selisih senilai <b>Rp${selisih.toLocaleString('id-ID')}</b>. Periksa angka Anda!`;
+        desc.innerHTML = `Melebihi SIPD sebesar <b>Rp${selisih.toLocaleString('id-ID')}</b>. Periksa angka Anda!`;
     }
 }
 
+// === 6. SIMPAN DARI MODAL (Merakit Array Multi-Grup) ===
 function simpanDariModal() {
     let rowID = document.getElementById('modalTargetRow').value;
     let realisasi = parseFloat(document.getElementById('modalTargetRealisasi').value);
     
-    let sub = document.getElementById('modalSubJudul').value.trim();
-    
-    let valToSave = "";
+    let groupsToSave = [];
     let textToPrint = "";
-    let dataJSON = [];
 
-    // Jika ada keterangan, beri 2 enter (jarak) sebelum rincian barang
-    if (sub) textToPrint += `${sub}\n\n`; 
+    // Sapu bersih semua grup di layar
+    document.querySelectorAll('.group-container').forEach(group => {
+        let sub = group.querySelector('.uraian-sub').value.trim();
+        let dataJSON = [];
+        let groupPrintText = "";
 
-    document.querySelectorAll('#dynamicRows .row').forEach(row => {
-        let ur = row.querySelector('.uraian').value.trim();
-        let v = parseFloat(row.querySelector('.vol').value) || 0;
-        let s = row.querySelector('.satuan').value.trim();
-        let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
-        let h = parseFloat(hStr) || 0;
-        let t = v * h;
-        
-        if (ur || v > 0 || h > 0) {
-            dataJSON.push({u: ur, v: v, s: s, h: h, t: t});
-            let st = s ? ` ${s}` : '';
+        if (sub) groupPrintText += `${sub}\n\n`; 
+
+        group.querySelectorAll('.item-rows-container .row').forEach(row => {
+            let ur = row.querySelector('.uraian').value.trim();
+            let v = parseFloat(row.querySelector('.vol').value) || 0;
+            let s = row.querySelector('.satuan').value.trim();
+            let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
+            let h = parseFloat(hStr) || 0;
+            let t = v * h;
             
-            // MAGIC: Injeksi HTML Garis Putus-Putus ala BPK
-            textToPrint += `- ${ur}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${v} ${st} x Rp ${h.toLocaleString('id-ID')} = Rp ${t.toLocaleString('id-ID')}</em></div>`;
+            if (ur || v > 0 || h > 0) {
+                dataJSON.push({u: ur, v: v, s: s, h: h, t: t});
+                let st = s ? ` ${s}` : '';
+                groupPrintText += `- ${ur}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${v} ${st} x Rp ${h.toLocaleString('id-ID')} = Rp ${t.toLocaleString('id-ID')}</em></div>`;
+            }
+        });
+
+        // Simpan grup jika ada isinya
+        if (sub || dataJSON.length > 0) {
+            groupsToSave.push({ sub: sub, items: dataJSON });
+            textToPrint += groupPrintText + "\n"; // Beri jarak antar grup saat dicetak
         }
     });
 
-    // Struktur Database JSON (Sangat Bersih)
-    let payload = { sub: sub, items: dataJSON };
-    valToSave = JSON.stringify(payload);
+    let valToSave = JSON.stringify(groupsToSave);
     
     document.getElementById('val_' + rowID).value = valToSave;
-    document.getElementById('print_' + rowID).innerHTML = textToPrint;
+    document.getElementById('print_' + rowID).innerHTML = textToPrint.trim();
     
     perbaruiTombolStatus(rowID, textToPrint, realisasi);
     modalAsisten.hide();
@@ -934,21 +1006,33 @@ function muatDataDariCloud() {
                         
                         try { 
                             let parsed = JSON.parse(dataServer[rowId]);
-                            
-                            // LOGIKA BARU: Merakit ulang HTML Garis Putus-putus
-                            if (parsed && parsed.items) {
-                                let tempText = "";
-                                // Tangkap sub (atau 'judul' sisa data lama)
+                            let tempText = "";
+
+                            // KECERDASAN BARU: Ekstrak Format Multi-Grup (Array)
+                            if (Array.isArray(parsed) && parsed[0].items !== undefined) {
+                                parsed.forEach(g => {
+                                    if (g.sub) tempText += `${g.sub}\n\n`;
+                                    if(g.items) {
+                                        g.items.forEach(i => {
+                                            let st = i.s ? ` ${i.s}` : '';
+                                            tempText += `- ${i.u}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${i.v} ${st} x Rp ${i.h.toLocaleString('id-ID')} = Rp ${i.t.toLocaleString('id-ID')}</em></div>`;
+                                        });
+                                    }
+                                    tempText += "\n";
+                                });
+                                printText = tempText.trim();
+                            } 
+                            // Format Lama Transisi
+                            else if (parsed && parsed.items) {
                                 let headText = parsed.sub || parsed.judul || ""; 
                                 if (headText) tempText += `${headText}\n\n`;
-                                
                                 parsed.items.forEach(i => {
                                     let st = i.s ? ` ${i.s}` : '';
                                     tempText += `- ${i.u}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${i.v} ${st} x Rp ${i.h.toLocaleString('id-ID')} = Rp ${i.t.toLocaleString('id-ID')}</em></div>`;
                                 });
                                 printText = tempText;
                             } 
-                            // LOGIKA LAMA (Penyelamat jika ada SKPD yg pakai format jadul)
+                            // Format Paling Jadul
                             else if (parsed && parsed.mode === 'auto') {
                                 printText = parsed.data.map(i => {
                                     let st = i.s ? ` ${i.s}` : '';
