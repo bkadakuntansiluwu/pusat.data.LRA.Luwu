@@ -149,32 +149,17 @@
       </div>
 
       <div class="modal-body p-4" style="background-color: #f8fafc;">
-        <div class="border bg-white p-4 shadow-sm" style="border-radius: 10px;">
-            <div class="row mb-3">
-                <div class="col-12 mb-4 pb-3 border-bottom">
-                    <label class="form-label fw-bold text-secondary" style="font-size: 11px;">Keterangan Kegiatan / Sub Kegiatan / Tanggal / Pengguna</label>
-                    <textarea id="modalSubJudul" class="form-control textarea-smart p-3" rows="2" placeholder="Masukkan Keterangan Belanja anda..." onkeyup="kalkulasiKombinasi()"></textarea>
-                </div>
-            </div>
+          
+        <div id="groupsContainer"></div>
 
-            <div class="row mb-3 fw-bold text-secondary border-bottom pb-2" style="font-size: 11px; font-family: Arial, sans-serif; text-transform: uppercase; letter-spacing: 0.5px;">
-                <div class="col-4">Uraian Rincian Belanja</div>
-                <div class="col-2 text-center">Volume</div>
-                <div class="col-2 text-center">Satuan</div>
-                <div class="col-3 text-end">Harga Satuan (Rp)</div>
-                <div class="col-1 text-end">Total</div>
-            </div>
-            
-            <div id="dynamicRows" class="mb-3" style="max-height: 380px; overflow-y: auto; overflow-x: hidden; padding-right: 5px;"></div>
-            
-            <button class="btn btn-sm btn-light border fw-bold text-secondary w-100 py-2" onclick="tambahBaris()" style="font-size: 12px; border-radius: 6px; transition: all 0.2s;">
-                <i class="fa-solid fa-plus me-1"></i> Tambah Baris Rincian Baru
+        <div class="d-flex justify-content-center mt-3">
+            <button class="btn btn-add-group" onclick="tambahKelompok()">
+                <i class="fa-solid fa-plus me-2"></i> Tambah Keterangan Lokasi / Kegiatan Baru
             </button>
         </div>
 
         <input type="hidden" id="modalTargetRow">
         <input type="hidden" id="modalTargetRealisasi">
-
       </div>
       
       <div class="modal-footer bg-white border-top px-4 py-3">
