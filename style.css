@@ -133,3 +133,24 @@ body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; 
     .table-lra th { background-color: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .table-lra td, .table-lra th { border: 0.5pt solid #000 !important; }
 }
+
+/* Tampilan Tombol Tambah Kelompok yang Elegan */
+.btn-add-group {
+    border: 1.5px dashed #3b82f6; /* Garis putus-putus tipis */
+    color: #3b82f6;
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 24px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-add-group:hover {
+    background-color: #eff6ff;
+    border-style: solid; /* Saat di-hover garisnya jadi solid, memberi efek interaktif */
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+}
