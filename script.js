@@ -979,16 +979,20 @@ function exportToExcelRapi() {
     XLSX.writeFile(wb, "LRA_" + (skpdBersih || "SKPD") + "_2026.xlsx");
 }
 
+// =========================================================================
+// MESIN KOMUNIKASI SERVER (DENGAN DOUBLE-LOCK SECURITY)
+// =========================================================================
+
 function simpanKeCloud() {
-    // === SENSOR ANTI-BAJAKAN (DOMAIN LOCK) ===
-    // Nanti ganti dengan domain Github Bos yang asli ya!
-    const DOMAIN_RESMI = "nama-akun.github.io"; 
+    // 🛡️ SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
+    // GANTI tulisan "nama-akun.github.io" di bawah ini dengan Domain Web Github Bos nanti
+    const DOMAIN_RESMI = "https://bkadakuntansiluwu.github.io/pusat.data.LRA.Luwu/"; 
     let currentDomain = window.location.hostname;
     
-    // (Beri tanda // pada kata 'return;' di bawah ini jika Bos masih mau tes di laptop secara offline)
-    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "") {
-        Swal.fire('Akses Ilegal 🚫', 'Aplikasi ini bajakan / dijalankan dari server tidak resmi! Koneksi diblokir.', 'error');
-        // return; 
+    // Mengecek apakah aplikasi dijalankan dari website resmi atau dari flashdisk (offline)
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
+        Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Koneksi diblokir demi keamanan.', 'error');
+        return; // Menghentikan eksekusi
     }
     // ==========================================
 
@@ -1006,23 +1010,26 @@ function simpanKeCloud() {
 
     fetch(SCRIPT_URL_DATABASE + "?action=save", {
         method: "POST", 
-        // KECERDASAN KEAMANAN: Mengirimkan secret_key agar pintu Google Script terbuka
-        body: JSON.stringify({ secret_key: SECRET_KEY, tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
+        body: JSON.stringify({ 
+            secret_key: SECRET_KEY, // <--- INI SANGAT KRUSIAL! (Membuka gembok server)
+            tahun: tahun, 
+            kode_skpd: kodeSkpdAktif, 
+            data: dataPayload 
+        })
     }).then(r => r.json()).then(res => {
         if(res.status === 'success') Swal.fire('Berhasil!', 'Data anda berhasil tersimpan', 'success');
         else Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
-    }).catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server.', 'error'));
+    }).catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server BPKAD.', 'error'));
 }
 
 function muatDataDariCloud() {
-    // === SENSOR ANTI-BAJAKAN (DOMAIN LOCK) ===
+    // 🛡️ SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
     const DOMAIN_RESMI = "nama-akun.github.io"; 
     let currentDomain = window.location.hostname;
     
-    // (Beri tanda // pada kata 'return;' di bawah ini jika Bos masih mau tes di laptop secara offline)
-    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "") {
-        Swal.fire('Akses Ilegal 🚫', 'Aplikasi ini bajakan / dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
-        // return; 
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
+        Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
+        return; 
     }
     // ==========================================
 
@@ -1031,7 +1038,7 @@ function muatDataDariCloud() {
     let tahun = document.getElementById('selectTahun').value;
     Swal.fire({ title: 'Menarik Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-    // KECERDASAN KEAMANAN: Tempelkan secret_key di URL
+    // INJEKSI KUNCI RAHASIA KE DALAM URL AGAR DIIZINKAN MASUK OLEH GOOGLE SCRIPT
     let fetchUrl = `${SCRIPT_URL_DATABASE}?action=load&tahun=${tahun}&kode_skpd=${kodeSkpdAktif}&secret_key=${SECRET_KEY}`;
 
     fetch(fetchUrl)
@@ -1045,6 +1052,7 @@ function muatDataDariCloud() {
                         inp.value = dataServer[rowId]; 
                         let printText = dataServer[rowId];
                         
+                        // KECERDASAN MULTI-GRUP (TIDAK ADA YANG DIUBAH)
                         try { 
                             let parsed = JSON.parse(dataServer[rowId]);
                             let tempText = "";
@@ -1097,7 +1105,7 @@ function muatDataDariCloud() {
                 Swal.fire('Sukses!', `${count} draf baris berhasil dipulihkan.`, 'success');
             } 
             else if (res.status === 'error') {
-                Swal.fire('Akses Ditolak', res.message, 'error');
+                Swal.fire('Akses Ditolak', res.message, 'error'); // Akan memunculkan peringatan kalau sandi salah!
             }
             else Swal.fire('Info', 'Tidak ada data draf di server.', 'info');
         }).catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server.', 'error'));
