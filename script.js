@@ -986,7 +986,7 @@ function exportToExcelRapi() {
 function simpanKeCloud() {
     // 🛡️ SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
     // GANTI tulisan "nama-akun.github.io" di bawah ini dengan Domain Web Github Bos nanti
-    const DOMAIN_RESMI = "https://bkadakuntansiluwu.github.io/pusat.data.LRA.Luwu/"; 
+    const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
     // Mengecek apakah aplikasi dijalankan dari website resmi atau dari flashdisk (offline)
