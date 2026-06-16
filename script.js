@@ -1,4 +1,4 @@
-const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbzEDogXtbjbHU3VC_OBP4nw_VTzWdY-e2zslQihiX2kSFTg4qk19iLWpA_h6VPjIfL9ag/exec";
+const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbyj4OITg624uXB4pMijdwFryqONA83xeEOvJMH1UiMS9qIIcYvWBxG6jYCRw-SAM4QPoA/exec";
 const SECRET_KEY = "LUWU_AMAN_2026_X99";
 let globalRawData = [];
 let kodeSkpdAktif = ""; 
