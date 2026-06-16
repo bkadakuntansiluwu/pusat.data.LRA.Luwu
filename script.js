@@ -1,5 +1,5 @@
-const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbysxnKQLhkXfiEJVp041cphYAZevFOTjkaOqcPwknHDPIoRMD6l0b3F4awEGZhV-TW7/exec";
-
+const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbzEDogXtbjbHU3VC_OBP4nw_VTzWdY-e2zslQihiX2kSFTg4qk19iLWpA_h6VPjIfL9ag/exec";
+const SECRET_KEY = "LUWU_AMAN_2026_X99";
 let globalRawData = [];
 let kodeSkpdAktif = ""; 
 let modalAsisten;
@@ -509,13 +509,13 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
         let fKurang = Math.abs(selisih).toLocaleString('id-ID', formatRp);
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fffde7; border: 1px solid #fef08a; color: #854d0e; border-radius: 4px;";
-        btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Kurang Rp ${fKurang}`;
+        btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Masih Kurang Senilai Rp ${fKurang}`;
     } else { 
         // Merah Lembut
         let fLebih = selisih.toLocaleString('id-ID', formatRp);
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fef2f2; border: 1px solid #fecdd3; color: #991b1b; border-radius: 4px;";
-        btn.innerHTML = `<i class="fa-solid fa-circle-xmark text-danger me-1"></i> Lebih Rp ${fLebih}`;
+        btn.innerHTML = `<i class="fa-solid fa-circle-xmark text-danger me-1"></i> Jumlah yang terinput lebih Rp ${fLebih}`;
     }
 }
 
@@ -526,6 +526,15 @@ function setMode() {
 // === 1. GLOBAL VARIABEL BARU UNTUK MULTI-KELOMPOK ===
 let groupIdCounter = 0;
 
+// === FUNGSI SAKTI: AUTO-NUMBERING KELOMPOK (ANTI-BOLONG) ===
+function updateNomorUrutKelompok() {
+    let groups = document.querySelectorAll('#groupsContainer .group-container');
+    groups.forEach((group, index) => {
+        let badge = group.querySelector('.group-number-badge');
+        if (badge) badge.innerText = index + 1; // Selalu terurut mulai dari 1, 2, 3...
+    });
+}
+
 // === 2. FUNGSI BARU: PENCIPTA KELOMPOK LOKASI/KEGIATAN ===
 function tambahKelompok(subText = "", items = []) {
     groupIdCounter++;
@@ -533,16 +542,15 @@ function tambahKelompok(subText = "", items = []) {
     let container = document.getElementById('groupsContainer');
     
     let groupDiv = document.createElement('div');
-    // Tambahkan class 'group-container' agar bisa terdeteksi oleh mesin kalkulasi
     groupDiv.className = "group-container border bg-white p-4 mb-4 position-relative shadow-sm";
     groupDiv.style.borderRadius = "10px";
     groupDiv.style.border = "1px solid #e2e8f0";
     groupDiv.id = gId;
     
-    // UI CERDAS: Tombol Hapus Grup (Lingkaran Merah Minimalis di Pojok)
+    // UI CERDAS: Tombol Hapus Grup (Panggil juga updateNomorUrutKelompok saat dihapus)
     groupDiv.innerHTML = `
         <button class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-3" 
-                onclick="document.getElementById('${gId}').remove(); kalkulasiKombinasi();" 
+                onclick="document.getElementById('${gId}').remove(); kalkulasiKombinasi(); updateNomorUrutKelompok();" 
                 title="Hapus Kelompok" 
                 style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
             <i class="fa-solid fa-trash-can" style="font-size: 12px;"></i>
@@ -550,7 +558,10 @@ function tambahKelompok(subText = "", items = []) {
 
         <div class="row mb-3">
             <div class="col-12 mb-3 pe-5">
-                <label class="form-label fw-bold text-secondary" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Keterangan Lokasi / Kegiatan / Tgl</label>
+                <label class="form-label fw-bold text-secondary d-flex align-items-center" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span class="group-number-badge text-white bg-primary d-flex align-items-center justify-content-center me-2" style="width: 20px; height: 20px; border-radius: 50%; font-size: 11px;">1</span>
+                    Keterangan Lokasi / Kegiatan / Tgl
+                </label>
                 <textarea class="form-control textarea-smart p-2 uraian-sub" rows="2" placeholder="Contoh: Perjalanan dinas ke Makassar..." onkeyup="kalkulasiKombinasi()">${subText}</textarea>
             </div>
         </div>
@@ -572,6 +583,9 @@ function tambahKelompok(subText = "", items = []) {
     
     container.appendChild(groupDiv);
     
+    // PEMANGGILAN NOMOR URUT SAAT KELOMPOK DITAMBAHKAN
+    updateNomorUrutKelompok();
+
     if (items.length === 0) {
         tambahBaris(gId);
     } else {
@@ -579,7 +593,6 @@ function tambahKelompok(subText = "", items = []) {
     }
     kalkulasiKombinasi();
     
-    // Auto-scroll halus
     setTimeout(() => { groupDiv.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 100);
 }
 
@@ -726,7 +739,7 @@ function kalkulasiKombinasi() {
         alertBox.className = 'alert alert-pro alert-pro-warning d-flex align-items-center mb-0 py-2 px-3';
         icon.className = 'fa-solid fa-triangle-exclamation fs-4 me-3 text-warning';
         title.innerText = 'NILAI MASIH KURANG DARI REALISASI';
-        desc.innerHTML = `Baru <b>Rp${totalHitung.toLocaleString('id-ID')}</b>. Masih kurang <b>Rp${Math.abs(selisih).toLocaleString('id-ID')}</b> dari SIPD.`;
+        desc.innerHTML = `Jumlah yang terinput senilai : <b>Rp${totalHitung.toLocaleString('id-ID')}</b>. Jumlah selisih masih kurang senilai :<b>Rp${Math.abs(selisih).toLocaleString('id-ID')}</b> dari SIPD.`;
     } else {
         alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0 py-2 px-3';
         icon.className = 'fa-solid fa-circle-xmark fs-4 me-3 text-danger';
@@ -967,6 +980,18 @@ function exportToExcelRapi() {
 }
 
 function simpanKeCloud() {
+    // === SENSOR ANTI-BAJAKAN (DOMAIN LOCK) ===
+    // Nanti ganti dengan domain Github Bos yang asli ya!
+    const DOMAIN_RESMI = "nama-akun.github.io"; 
+    let currentDomain = window.location.hostname;
+    
+    // (Beri tanda // pada kata 'return;' di bawah ini jika Bos masih mau tes di laptop secara offline)
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "") {
+        Swal.fire('Akses Ilegal 🚫', 'Aplikasi ini bajakan / dijalankan dari server tidak resmi! Koneksi diblokir.', 'error');
+        // return; 
+    }
+    // ==========================================
+
     if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
     if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
     let tahun = document.getElementById('selectTahun').value;
@@ -980,20 +1005,36 @@ function simpanKeCloud() {
     Swal.fire({ title: 'Menyimpan Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     fetch(SCRIPT_URL_DATABASE + "?action=save", {
-        method: "POST", body: JSON.stringify({ tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
+        method: "POST", 
+        // KECERDASAN KEAMANAN: Mengirimkan secret_key agar pintu Google Script terbuka
+        body: JSON.stringify({ secret_key: SECRET_KEY, tahun: tahun, kode_skpd: kodeSkpdAktif, data: dataPayload })
     }).then(r => r.json()).then(res => {
         if(res.status === 'success') Swal.fire('Berhasil!', 'Data anda berhasil tersimpan', 'success');
-        else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
-    }).catch(() => Swal.fire('Error', 'Gagal server.', 'error'));
+        else Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
+    }).catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server.', 'error'));
 }
 
 function muatDataDariCloud() {
+    // === SENSOR ANTI-BAJAKAN (DOMAIN LOCK) ===
+    const DOMAIN_RESMI = "nama-akun.github.io"; 
+    let currentDomain = window.location.hostname;
+    
+    // (Beri tanda // pada kata 'return;' di bawah ini jika Bos masih mau tes di laptop secara offline)
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "") {
+        Swal.fire('Akses Ilegal 🚫', 'Aplikasi ini bajakan / dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
+        // return; 
+    }
+    // ==========================================
+
     if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
     if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
     let tahun = document.getElementById('selectTahun').value;
     Swal.fire({ title: 'Menarik Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-    fetch(`${SCRIPT_URL_DATABASE}?action=load&tahun=${tahun}&kode_skpd=${kodeSkpdAktif}`)
+    // KECERDASAN KEAMANAN: Tempelkan secret_key di URL
+    let fetchUrl = `${SCRIPT_URL_DATABASE}?action=load&tahun=${tahun}&kode_skpd=${kodeSkpdAktif}&secret_key=${SECRET_KEY}`;
+
+    fetch(fetchUrl)
         .then(r => r.json()).then(res => {
             if(res.status === 'success') {
                 let dataServer = res.data; let count = 0;
@@ -1008,7 +1049,6 @@ function muatDataDariCloud() {
                             let parsed = JSON.parse(dataServer[rowId]);
                             let tempText = "";
 
-                            // KECERDASAN BARU: Ekstrak Format Multi-Grup (Array)
                             if (Array.isArray(parsed) && parsed[0].items !== undefined) {
                                 parsed.forEach(g => {
                                     if (g.sub) tempText += `${g.sub}\n\n`;
@@ -1022,7 +1062,6 @@ function muatDataDariCloud() {
                                 });
                                 printText = tempText.trim();
                             } 
-                            // Format Lama Transisi
                             else if (parsed && parsed.items) {
                                 let headText = parsed.sub || parsed.judul || ""; 
                                 if (headText) tempText += `${headText}\n\n`;
@@ -1032,7 +1071,6 @@ function muatDataDariCloud() {
                                 });
                                 printText = tempText;
                             } 
-                            // Format Paling Jadul
                             else if (parsed && parsed.mode === 'auto') {
                                 printText = parsed.data.map(i => {
                                     let st = i.s ? ` ${i.s}` : '';
@@ -1057,8 +1095,12 @@ function muatDataDariCloud() {
                     }
                 });
                 Swal.fire('Sukses!', `${count} draf baris berhasil dipulihkan.`, 'success');
-            } else Swal.fire('Info', 'Tidak ada data draf di server.', 'info');
-        }).catch(() => Swal.fire('Error', 'Gagal server.', 'error'));
+            } 
+            else if (res.status === 'error') {
+                Swal.fire('Akses Ditolak', res.message, 'error');
+            }
+            else Swal.fire('Info', 'Tidak ada data draf di server.', 'info');
+        }).catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server.', 'error'));
 }
 
 window.addEventListener('beforeunload', function (e) {
