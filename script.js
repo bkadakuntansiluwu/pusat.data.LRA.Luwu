@@ -1,4 +1,4 @@
-const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbyjXx_GY6R47ZZ6Yj9CNIywgK5PvFh50a0vlXWNBw4-ePHAyw_crZJPKnj3pZu3AHM8vg/exec";
+const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbysxnKQLhkXfiEJVp041cphYAZevFOTjkaOqcPwknHDPIoRMD6l0b3F4awEGZhV-TW7/exec";
 
 let globalRawData = [];
 let kodeSkpdAktif = ""; 
@@ -478,10 +478,13 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
     let selisih = totalHitung - realisasi;
     let formatRp = { minimumFractionDigits: 0 };
     
-    // Set dasar class tombol agar seragam
+    // SENSOR KECURANGAN: Bersihkan dulu kode HTML (<div...>) sebelum dihitung abjadnya!
+    let teksBersih = printText.replace(/<[^>]*>?/gm, ''); 
+    let jumlahHuruf = teksBersih.replace(/[^a-zA-Z]/g, '').length;
+    
     btn.className = 'btn btn-sm w-100 text-start';
 
-    if (printText.trim() === '') {
+    if (teksBersih.trim() === '') {
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 4px;";
         btn.innerHTML = '<i class="fa-regular fa-pen-to-square text-secondary me-1"></i> Isi Penjelasan';
     } else if (realisasi === 0 && printText.trim() !== '') {
@@ -489,18 +492,26 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f8fafc; border: 1px solid #cbd5e1; color: #334155; border-radius: 4px;";
         btn.innerHTML = '<i class="fa-solid fa-check text-muted me-1"></i> Catatan Tersimpan';
     } else if (Math.abs(selisih) < 1) { 
-        // Hijau Pastel Sangat Lembut & Bersih (Sesuai)
-        btn.className = 'btn btn-sm w-100 text-start fw-bold';
-        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
-        btn.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Sesuai / Balance';
+        // CEK KEMALASAN SKPD! (Minimal 15 Huruf Abjad)
+        if (jumlahHuruf < 15) {
+            // Merah Lembut (Penjelasan Bodong)
+            btn.className = 'btn btn-sm w-100 text-start fw-bold';
+            btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fef2f2; border: 1px solid #fecdd3; color: #991b1b; border-radius: 4px;";
+            btn.innerHTML = `<i class="fa-solid fa-circle-exclamation text-danger me-1"></i> Penjelasan Terlalu Singkat!`;
+        } else {
+            // Hijau Pastel Sangat Lembut & Bersih (Sesuai & Valid)
+            btn.className = 'btn btn-sm w-100 text-start fw-bold';
+            btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
+            btn.innerHTML = '<i class="fa-solid fa-circle-check text-success me-1"></i> Sesuai / Balance';
+        }
     } else if (selisih < 0) { 
-        // Kuning-Orange Tingkat Rendah (Kurang Dana)
+        // Kuning-Orange
         let fKurang = Math.abs(selisih).toLocaleString('id-ID', formatRp);
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fffde7; border: 1px solid #fef08a; color: #854d0e; border-radius: 4px;";
         btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Kurang Rp ${fKurang}`;
     } else { 
-        // Merah Lembut / Soft Rose (Kelebihan Dana)
+        // Merah Lembut
         let fLebih = selisih.toLocaleString('id-ID', formatRp);
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
         btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #fef2f2; border: 1px solid #fecdd3; color: #991b1b; border-radius: 4px;";
@@ -519,11 +530,9 @@ function tambahBaris(ur = "", v = "", s = "", h = "") {
     div.className = "row mb-3 align-items-center pb-2 border-bottom border-light"; 
     let hFormatted = h ? h.toLocaleString('id-ID') : "";
 
-    // KECERDASAN DIPULIHKAN: Class 'uraian', 'vol', 'satuan', dan 'harga' dikembalikan 
-    // agar mesin kalkulator bisa mendeteksi angka kembali secara presisi!
     div.innerHTML = `
         <div class="col-4">
-            <textarea class="form-control textarea-smart p-2 uraian" rows="1" placeholder="Uraian (Cth: ATK)" style="resize:none; font-size: 12px;">${ur}</textarea>
+            <textarea class="form-control textarea-smart p-2 uraian" rows="2" placeholder="Masukkan uraian nama belanja" style="font-size: 12px; resize: vertical;">${ur}</textarea>
         </div>
         <div class="col-2">
             <input type="number" class="form-control form-control-sm text-center border-light-subtle shadow-none vol" placeholder="Vol" oninput="kalkulasiKombinasi()" value="${v}" style="font-size: 12px; background-color: #f8fafc;">
@@ -549,6 +558,9 @@ function tambahBaris(ur = "", v = "", s = "", h = "") {
     `;
     container.appendChild(div);
     kalkulasiKombinasi();
+
+    // SUNTIKAN UX ENTERPRISE: Mesin otomatis men-scroll ke baris paling bawah saat baris baru ditambahkan!
+    container.scrollTop = container.scrollHeight;
 }
 
 function bukaAsisten(rowID, kodeRek, uraian, realisasi) {
@@ -560,26 +572,34 @@ function bukaAsisten(rowID, kodeRek, uraian, realisasi) {
     document.getElementById('modalUraian').innerText = judulRekening;
     document.getElementById('modalRealisasiTxt').innerText = "Rp " + realisasi.toLocaleString('id-ID');
     
-    let isAuto = false; let parsedData = [];
+    // Reset Form
+    document.getElementById('modalSubJudul').value = "";
+    document.getElementById('dynamicRows').innerHTML = '';
+    
+    let itemsData = [];
+
     if (nilaiLama && nilaiLama.trim() !== "") {
         try { 
             let parsed = JSON.parse(nilaiLama); 
-            if (Array.isArray(parsed)) { isAuto = true; parsedData = parsed; }
-            else if (parsed.mode) { isAuto = (parsed.mode === 'auto'); parsedData = parsed.data; }
-        } catch(e) { isAuto = false; parsedData = nilaiLama; }
+            if (parsed.items) {
+                // Kecerdasan: Jika ada data 'judul' sisa kemarin, gabungkan agar tidak hilang
+                document.getElementById('modalSubJudul').value = parsed.sub || parsed.judul || "";
+                itemsData = parsed.items;
+            } 
+            else if (parsed.data && Array.isArray(parsed.data)) {
+                itemsData = parsed.data;
+            } else if (parsed.data && typeof parsed.data === 'string') {
+                document.getElementById('modalSubJudul').value = parsed.data;
+            }
+        } catch(e) { 
+            document.getElementById('modalSubJudul').value = nilaiLama;
+        }
     }
 
-    if (isAuto) {
-        document.getElementById('tab-otomatis').click();
-        document.getElementById('dynamicRows').innerHTML = '';
-        if (!Array.isArray(parsedData) || parsedData.length === 0) tambahBaris();
-        else parsedData.forEach(item => tambahBaris(item.u, item.v, item.s, item.h));
-        document.getElementById('modalTextarea').value = "";
+    if (itemsData.length === 0) {
+        tambahBaris();
     } else {
-        document.getElementById('tab-manual').click();
-        document.getElementById('modalTextarea').value = Array.isArray(parsedData) ? "" : parsedData;
-        document.getElementById('dynamicRows').innerHTML = '';
-        tambahBaris(); 
+        itemsData.forEach(item => tambahBaris(item.u, item.v, item.s, item.h));
     }
     
     kalkulasiKombinasi();
@@ -587,27 +607,26 @@ function bukaAsisten(rowID, kodeRek, uraian, realisasi) {
 }
 
 function kalkulasiKombinasi() {
-    let activeTab = document.querySelector('#modeTabs .nav-link.active').id;
     let realisasi = parseFloat(document.getElementById('modalTargetRealisasi').value);
     let totalHitung = 0;
-    let isKosong = false;
+    
+    let sub = document.getElementById('modalSubJudul').value.trim();
+    let rows = document.querySelectorAll('#dynamicRows .row');
+    
+    let isKosong = (rows.length === 0 && sub === '');
+    let jumlahHuruf = sub.replace(/[^a-zA-Z]/g, '').length;
 
-    if (activeTab === 'tab-otomatis') {
-        let rows = document.querySelectorAll('#dynamicRows .row');
-        isKosong = (rows.length === 0);
-        rows.forEach(row => {
-            let v = parseFloat(row.querySelector('.vol').value) || 0;
-            let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
-            let h = parseFloat(hStr) || 0;
-            let sub = v * h;
-            row.querySelector('.subtotal-txt').innerText = sub.toLocaleString('id-ID');
-            totalHitung += sub;
-        });
-    } else {
-        let teks = document.getElementById('modalTextarea').value;
-        totalHitung = hitungTotalDariTeks(teks);
-        isKosong = (teks.trim() === '');
-    }
+    rows.forEach(row => {
+        let v = parseFloat(row.querySelector('.vol').value) || 0;
+        let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
+        let h = parseFloat(hStr) || 0;
+        let subtotal = v * h;
+        row.querySelector('.subtotal-txt').innerText = subtotal.toLocaleString('id-ID');
+        totalHitung += subtotal;
+        
+        let ur = row.querySelector('.uraian').value;
+        jumlahHuruf += ur.replace(/[^a-zA-Z]/g, '').length;
+    });
 
     let alertBox = document.getElementById('alertSmart');
     let icon = document.getElementById('iconSmart');
@@ -618,27 +637,34 @@ function kalkulasiKombinasi() {
     if (isKosong) {
         alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0';
         icon.className = 'fa-solid fa-pen-to-square fs-3 me-3 text-secondary';
-        title.innerText = 'Menunggu Inputan';
-        desc.innerText = activeTab === 'tab-otomatis' ? 'Isi form di bawah, sistem akan menghitung otomatis.' : 'Ketik narasi perhitungan Anda di kotak bawah ini.';
+        title.innerText = 'Silahkan input rincian anda';
+        desc.innerText = 'Isi Keterangan Kegiatan dan rincian form di bawah, sistem akan menghitung otomatis.';
     } else if (realisasi === 0) {
         alertBox.className = 'alert alert-pro alert-pro-info d-flex align-items-center mb-0';
         icon.className = 'fa-solid fa-info-circle fs-3 me-3 text-info';
         title.innerText = 'Teks Disimpan';
         desc.innerText = 'Nilai realisasi kosong, catatan akan dilampirkan sebagai penjelas.';
     } else if (Math.abs(selisih) < 1) {
-        alertBox.className = 'alert alert-pro alert-pro-success d-flex align-items-center mb-0';
-        icon.className = 'fa-solid fa-check-circle fs-3 me-3 text-success';
-        title.innerText = 'SEMPURNA! SUDAH BALANCE';
-        desc.innerText = `Total perhitungan Rp${totalHitung.toLocaleString('id-ID')} cocok dengan nilai Realisasi SIPD.`;
+        if (jumlahHuruf < 15) {
+            alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0';
+            icon.className = 'fa-solid fa-circle-exclamation fs-3 me-3 text-danger';
+            title.innerText = 'JUMLAH SESUAI, TAPI PENJELASAN DITOLAK!';
+            desc.innerHTML = `Total Rp${totalHitung.toLocaleString('id-ID')} sesuai, tapi <b>Teks Anda terlalu singkat!</b><br>Harap ketik Keterangan Kegiatan & Uraian dengan jelas.`;
+        } else {
+            alertBox.className = 'alert alert-pro alert-pro-success d-flex align-items-center mb-0';
+            icon.className = 'fa-solid fa-check-circle fs-3 me-3 text-success';
+            title.innerText = 'JUMLAH RINCIAN SESUAI';
+            desc.innerText = `Total perhitungan Rp${totalHitung.toLocaleString('id-ID')} sesuai.`;
+        }
     } else if (selisih < 0) {
         alertBox.className = 'alert alert-pro alert-pro-warning d-flex align-items-center mb-0';
         icon.className = 'fa-solid fa-triangle-exclamation fs-3 me-3 text-warning';
-        title.innerText = 'NILAI MASIH KURANG';
+        title.innerText = 'NILAI MASIH KURANG DARI REALISASI';
         desc.innerHTML = `Total perhitungan Anda baru <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Masih kurang <b>Rp${Math.abs(selisih).toLocaleString('id-ID')}</b> dari SIPD.`;
     } else {
         alertBox.className = 'alert alert-pro alert-pro-danger d-flex align-items-center mb-0';
         icon.className = 'fa-solid fa-circle-xmark fs-3 me-3 text-danger';
-        title.innerText = 'KELEBIHAN DANA';
+        title.innerText = 'JUMLAH MELEBIHI REALISASI';
         desc.innerHTML = `Total perhitungan Anda <b>Rp${totalHitung.toLocaleString('id-ID')}</b>.<br>Selisih senilai <b>Rp${selisih.toLocaleString('id-ID')}</b>. Periksa angka Anda!`;
     }
 }
@@ -646,36 +672,39 @@ function kalkulasiKombinasi() {
 function simpanDariModal() {
     let rowID = document.getElementById('modalTargetRow').value;
     let realisasi = parseFloat(document.getElementById('modalTargetRealisasi').value);
-    let activeTab = document.querySelector('#modeTabs .nav-link.active').id;
+    
+    let sub = document.getElementById('modalSubJudul').value.trim();
     
     let valToSave = "";
     let textToPrint = "";
-    let modeStr = (activeTab === 'tab-otomatis') ? 'auto' : 'manual';
+    let dataJSON = [];
 
-    if (modeStr === 'auto') {
-        let dataJSON = [];
-        document.querySelectorAll('#dynamicRows .row').forEach(row => {
-            let ur = row.querySelector('.uraian').value;
-            let v = parseFloat(row.querySelector('.vol').value) || 0;
-            let s = row.querySelector('.satuan').value;
-            let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
-            let h = parseFloat(hStr) || 0;
-            let t = v * h;
-            if (ur || v > 0 || h > 0) {
-                dataJSON.push({u: ur, v: v, s: s, h: h, t: t});
-                let st = s ? ` ${s}` : '';
-                textToPrint += `- ${ur}: ${v}${st} x Rp${h.toLocaleString('id-ID')} = Rp${t.toLocaleString('id-ID')}\n`;
-            }
-        });
-        valToSave = JSON.stringify({ mode: modeStr, data: dataJSON });
-    } else {
-        let manualText = document.getElementById('modalTextarea').value;
-        textToPrint = manualText;
-        valToSave = JSON.stringify({ mode: modeStr, data: manualText });
-    }
+    // Jika ada keterangan, beri 2 enter (jarak) sebelum rincian barang
+    if (sub) textToPrint += `${sub}\n\n`; 
+
+    document.querySelectorAll('#dynamicRows .row').forEach(row => {
+        let ur = row.querySelector('.uraian').value.trim();
+        let v = parseFloat(row.querySelector('.vol').value) || 0;
+        let s = row.querySelector('.satuan').value.trim();
+        let hStr = row.querySelector('.harga').value.replace(/\./g, '').replace(/,/g, '.');
+        let h = parseFloat(hStr) || 0;
+        let t = v * h;
+        
+        if (ur || v > 0 || h > 0) {
+            dataJSON.push({u: ur, v: v, s: s, h: h, t: t});
+            let st = s ? ` ${s}` : '';
+            
+            // MAGIC: Injeksi HTML Garis Putus-Putus ala BPK
+            textToPrint += `- ${ur}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${v} ${st} x Rp ${h.toLocaleString('id-ID')} = Rp ${t.toLocaleString('id-ID')}</em></div>`;
+        }
+    });
+
+    // Struktur Database JSON (Sangat Bersih)
+    let payload = { sub: sub, items: dataJSON };
+    valToSave = JSON.stringify(payload);
     
     document.getElementById('val_' + rowID).value = valToSave;
-    document.getElementById('print_' + rowID).innerText = textToPrint;
+    document.getElementById('print_' + rowID).innerHTML = textToPrint;
     
     perbaruiTombolStatus(rowID, textToPrint, realisasi);
     modalAsisten.hide();
@@ -905,7 +934,22 @@ function muatDataDariCloud() {
                         
                         try { 
                             let parsed = JSON.parse(dataServer[rowId]);
-                            if (parsed && parsed.mode === 'auto') {
+                            
+                            // LOGIKA BARU: Merakit ulang HTML Garis Putus-putus
+                            if (parsed && parsed.items) {
+                                let tempText = "";
+                                // Tangkap sub (atau 'judul' sisa data lama)
+                                let headText = parsed.sub || parsed.judul || ""; 
+                                if (headText) tempText += `${headText}\n\n`;
+                                
+                                parsed.items.forEach(i => {
+                                    let st = i.s ? ` ${i.s}` : '';
+                                    tempText += `- ${i.u}\n<div style="border-bottom: 1px dashed #666; padding-bottom: 4px; margin-bottom: 4px;"><em>${i.v} ${st} x Rp ${i.h.toLocaleString('id-ID')} = Rp ${i.t.toLocaleString('id-ID')}</em></div>`;
+                                });
+                                printText = tempText;
+                            } 
+                            // LOGIKA LAMA (Penyelamat jika ada SKPD yg pakai format jadul)
+                            else if (parsed && parsed.mode === 'auto') {
                                 printText = parsed.data.map(i => {
                                     let st = i.s ? ` ${i.s}` : '';
                                     return `- ${i.u}: ${i.v}${st} x Rp${i.h.toLocaleString('id-ID')} = Rp${i.t.toLocaleString('id-ID')}`;
@@ -915,7 +959,7 @@ function muatDataDariCloud() {
                             }
                         } catch(e) {} 
 
-                        document.getElementById('print_' + rowId).innerText = printText;
+                        document.getElementById('print_' + rowId).innerHTML = printText;
                         
                         let btn = document.getElementById('btn_' + rowId);
                         if (btn && btn.innerHTML.includes('Isi Keterangan')) {
