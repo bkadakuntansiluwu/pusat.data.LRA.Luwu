@@ -1,0 +1,210 @@
+/* === UI PANEL ELEGAN & STICKY === */
+body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; color: #1f2937; margin: 0; }
+
+.control-panel { 
+    background: rgba(255, 255, 255, 0.95); 
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 8px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+    border: 1px solid #e2e8f0; 
+}
+
+.panel-title { color: #111827; font-family: "Segoe UI", Arial, sans-serif; font-weight: 700; }
+
+.btn-custom {
+    border-radius: 6px; font-weight: 600; font-size: 12px; font-family: "Segoe UI", Arial, sans-serif;
+    padding: 6px 14px; transition: all 0.2s ease; border: none; letter-spacing: 0.3px;
+}
+.btn-custom:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+
+.btn-sync { background-color: #e2e8f0; color: #334155; }
+.btn-sync:hover { background-color: #cbd5e1; color: #0f172a; }
+
+.btn-cloud { background-color: #2563eb; color: white; }
+.btn-cloud:hover { background-color: #1d4ed8; }
+
+.btn-excel { background-color: #10b981; color: white; }
+.btn-excel:hover { background-color: #059669; }
+
+.btn-print { background-color: #0f172a; color: white; }
+.btn-print:hover { background-color: #000000; }
+
+/* === KERTAS CETAK (TAMPILAN NORMAL LAYAR) === */
+.print-page { 
+    background: #fff; padding: 40px 50px; margin: 25px auto; 
+    max-width: 1400px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); position: relative;
+}
+
+.table-lra { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 11px; 
+    margin-top: 15px; 
+    /* KUNCI UTAMA 1: Mengunci kerangka kolom secara absolut */
+    table-layout: fixed; 
+}
+.table-lra th { border: 1px solid #000 !important; text-align: center; vertical-align: middle; padding: 8px 4px; font-weight: bold; background-color: #ffffff !important; font-size: 10px; }
+.table-lra td { 
+    border: 1px solid #000 !important; 
+    vertical-align: top; 
+    padding: 3px 5px !important; /* DIET PADDING: Lebih rapat atas bawah */
+    line-height: 1.2; /* DIET LINE HEIGHT: Spasi antar teks dirapatkan */
+    /* KUNCI UTAMA 2: Memaksa teks turun ke bawah jika mentok garis */
+    word-wrap: break-word; 
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+.table-lra td:first-child { white-space: nowrap !important; font-family: Arial, sans-serif; text-align: left; padding-right: 10px !important; }
+
+/* === HIERARKI KEDALAMAN === */
+.pad-lvl-0 td:nth-child(2) { padding-left: 5px !important; }
+.pad-lvl-1 td:nth-child(2) { padding-left: 15px !important; }
+.pad-lvl-2 td:nth-child(2) { padding-left: 25px !important; }
+.pad-lvl-3 td:nth-child(2) { padding-left: 35px !important; }
+.pad-lvl-4 td:nth-child(2) { padding-left: 45px !important; }
+.pad-lvl-5 td:nth-child(2) { padding-left: 55px !important; }
+.pad-lvl-6 td:nth-child(2) { padding-left: 65px !important; }
+.pad-lvl-7 td:nth-child(2) { padding-left: 75px !important; }
+.pad-lvl-8 td:nth-child(2) { padding-left: 85px !important; }
+.pad-lvl-9 td:nth-child(2) { padding-left: 95px !important; }
+.pad-lvl-10 td:nth-child(2) { padding-left: 105px !important; }
+
+.style-header { font-weight: bold; text-transform: uppercase; background-color: #f8fafc; color: #000; }
+.style-bold { font-weight: bold; color: #000; }
+.style-italic { font-weight: bold; font-style: italic; color: #000; }
+.style-normal { font-weight: normal; color: #1e293b; }
+.style-rincian { font-weight: normal; color: #000; background-color: #fff; font-style: normal; }
+
+.print-view-text { 
+    display: none; 
+    white-space: pre-wrap; 
+    word-break: break-word;
+    font-size: 11px; 
+    font-family: "Times New Roman", Times, serif; 
+    margin-top: 2px; /* Margin atas dikurangi agar menempel */
+    line-height: 1.15; /* Spasi antar baris rincian dirapatkan */
+    text-align: justify; 
+}
+
+.table-lra tr {
+    page-break-inside: avoid;
+}
+
+.cell-penjelasan { vertical-align: middle !important; }
+.modal-body-custom { background-color: #f8fafc; }
+
+/* === BARIS LANJUTAN PENJELASAN (SMART SPLIT-PAGINATION) === */
+/* Otomatis diciptakan saat penjelasan melebihi sisa halaman.
+   Kolom data dikosongkan, hanya kolom PENJELASAN yang berisi sisa teks. */
+.continuation-row td { background-color: #fafbfc; }
+.continuation-row .cell-penjelasan { vertical-align: top !important; }
+.continuation-row .print-view-text { margin-top: 0; }
+@media print {
+    .continuation-row td { background-color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* === BADGE STATUS TTD (Cloud Sync Indicator) === */
+/* Tampil di sebelah kolom TTD, menunjukkan status sync ke database cloud */
+#ttdStatusBadge {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+#ttdStatusBadge.bg-success  { background-color: #10b981 !important; color: #fff !important; }
+#ttdStatusBadge.bg-warning  { background-color: #f59e0b !important; color: #fff !important; }
+#ttdStatusBadge.bg-danger   { background-color: #ef4444 !important; color: #fff !important; }
+#ttdStatusBadge.bg-info     { background-color: #3b82f6 !important; color: #fff !important; }
+#ttdStatusBadge.bg-secondary{ background-color: #64748b !important; color: #fff !important; }
+#ttdStatusBadge.bg-light    { background-color: #f1f5f9 !important; color: #475569 !important; border-color: #cbd5e1; }
+
+@media print {
+    #ttdStatusBadge, .no-print { display: none !important; }
+}
+
+/* === UI WARNING & MODAL PRO (PREMIUM MINIMALIST) === */
+.nav-pills .nav-link { 
+    font-family: 'Arial', sans-serif; font-size: 12px; font-weight: 600; color: #64748b; 
+    background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 50px; 
+    margin-right: 10px; padding: 8px 18px; transition: all 0.2s ease; 
+}
+.nav-pills .nav-link:hover { background-color: #f8fafc; border-color: #94a3b8; }
+.nav-pills .nav-link.active { 
+    background-color: #f1f5f9; color: #0f172a; border-color: #94a3b8; 
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); 
+}
+
+.textarea-smart { 
+    font-family: "Arial", sans-serif; font-size: 13px; border: 1px solid #e2e8f0; 
+    border-radius: 8px; background-color: #f8fafc; transition: all 0.2s; 
+}
+.textarea-smart:focus { 
+    background-color: #ffffff; border-color: #cbd5e1; 
+    box-shadow: 0 0 0 3px rgba(241, 245, 249, 1); outline: none; 
+}
+
+/* Kotak Notifikasi AI Dibuat Sangat Lembut dan Tipis */
+.alert-pro { 
+    border-left: 3px solid; border-radius: 6px; box-shadow: none; 
+    border-top: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; 
+    font-family: 'Arial', sans-serif; padding: 12px 16px; 
+}
+.alert-pro-info { border-left-color: #94a3b8; background: #f8fafc; color: #334155; }
+.alert-pro-success { border-left-color: #10b981; background: #f0fdf4; color: #166534; }
+.alert-pro-warning { border-left-color: #f59e0b; background: #fffbeb; color: #92400e; }
+.alert-pro-danger { border-left-color: #ef4444; background: #fef2f2; color: #991b1b; }
+
+/* === ENGINE CETAK PRO (AUTO-PAGINATOR) === */
+#printWrapper { display: none; background: #e2e8f0; padding: 20px; }
+#printWrapper .no-print { display: none !important; }
+#printWrapper .print-view-text { display: block !important; }
+
+.page-pro { 
+    background: #fff; width: 330mm; 
+    padding: 5mm 15mm; margin: 0 auto 20px auto; 
+    box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    page-break-after: always; 
+}
+.page-pro:last-child { page-break-after: auto; margin-bottom: 0; }
+
+.pdf-footer-pro {
+    display: flex; justify-content: space-between; font-size: 10px; font-weight: bold;
+    font-family: Arial, sans-serif; border-top: 2px solid #000; padding-top: 8px; margin-top: 15px; color: #000;
+}
+
+.editable-field:hover { background-color: #fef08a; cursor: text; border-radius: 3px; }
+
+/* Saat CTRL+P ditekan (Real Printing) */
+@media print {
+    @page { size: landscape; margin: 0; } 
+    body { background: #fff !important; margin: 0; padding: 0; }
+    .container-fluid, .print-page { display: none !important; } 
+    #printWrapper { display: block !important; padding: 0; background: #fff; } 
+    .page-pro { box-shadow: none; margin: 0; width: 100%; min-height: 100vh; }
+    .table-lra th { background-color: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .table-lra td, .table-lra th { border: 0.5pt solid #000 !important; }
+}
+
+/* Tampilan Tombol Tambah Kelompok yang Elegan */
+.btn-add-group {
+    border: 1.5px dashed #3b82f6; /* Garis putus-putus tipis */
+    color: #3b82f6;
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 24px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-add-group:hover {
+    background-color: #eff6ff;
+    border-style: solid; /* Saat di-hover garisnya jadi solid, memberi efek interaktif */
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
+}
