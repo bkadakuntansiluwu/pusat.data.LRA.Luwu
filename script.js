@@ -1334,7 +1334,7 @@ function cetakPro() {
         return;
     }
 
-    Swal.fire({ title: 'Tunggu Sebentar Yah...', text: 'Mesin Cerdas Sedang Menyusun Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({ title: 'Sedang Memproses', text: 'Tunggu Sedang Mempersiapkan Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     setTimeout(() => {
         let mulaiHalaman = parseInt(document.getElementById('inputHalaman').value) || 1;
