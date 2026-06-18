@@ -1,4 +1,4 @@
-const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbxQCrPfY8PfrCs442HOaQxyob_c0s2lZW2st4aikFKtWi6znX0QR1ZyCD3kAU_jFTpaPA/exec";
+const SCRIPT_URL_DATABASE = "https://script.google.com/macros/s/AKfycbyDWdMtjTFzfKu7eGD2gN0uF8EFWkTjGsrVonvtcwD5zFJ8FY-P-dzvmmEuXqaTbwsW0g/exec";
 const SECRET_KEY = "LUWU_AMAN_2026_X99";
 let globalRawData = [];
 let kodeSkpdAktif = ""; 
@@ -59,11 +59,12 @@ function cekIdentitasPengguna() {
                 title: 'Selamat Datang 👋',
                 html: `
                     <div style="text-align: left; font-size: 13px; line-height: 1.6;">
-                        Masukkan Nama Bapak/Ibu<br>                       
+                        Untuk <b>audit log</b> & <b>sync tanda tangan</b>, mohon masukkan nama Anda.<br>
+                        <small class="text-muted">Nama ini dicatat di server saat Anda menyimpan data, agar admin BPKAD tahu siapa yang mengedit.</small>
                     </div>
                 `,
                 input: 'text',
-                inputPlaceholder: 'Ketik Nama Bapak/Ibu ...',
+                inputPlaceholder: 'Contoh: Bpk. Andi (Dinas Pendidikan)',
                 inputAttributes: { maxlength: 80 },
                 inputValidator: (value) => {
                     if (!value || value.trim().length < 3) return 'Nama terlalu pendek (min 3 huruf)';
@@ -79,7 +80,7 @@ function cekIdentitasPengguna() {
                     localStorage.setItem('LRA_USER_NAME', nama);
                     Swal.fire({
                         title: 'Tersimpan!',
-                        html: `Halo <b>${nama}</b> 👋<br><br><small class="text-muted">Nama ini akan otomatis tercatat saat Anda menyimpan data.</small>`,
+                        html: `Halo <b>${nama}</b> 👋<br><br><small class="text-muted">Nama ini akan otomatis tercatat saat Anda menyimpan data. Untuk mengganti, hapus localStorage browser atau hubungi admin.</small>`,
                         icon: 'success',
                         confirmButtonColor: '#10b981',
                         timer: 3000
@@ -1629,7 +1630,8 @@ function simpanKeCloud() {
             tahun: tahun, 
             kode_skpd: kodeSkpdAktif, 
             data: dataPayload,
-            user_agent: identity
+            user_agent: identity,
+            admin_bypass: true  // ← ADMIN TEST MODE: skip lock untuk testing cepat
         })
     };
 
@@ -1640,13 +1642,20 @@ function simpanKeCloud() {
                 let stats = res.stats || {};
                 let pesan = 'Data berhasil disinkronisasi ke server.';
                 if (stats.updated || stats.inserted || stats.skipped_unchanged) {
+                    let timingInfo = stats.processing_time_ms 
+                        ? `<br><i class="fa-solid fa-stopwatch me-1"></i> Waktu proses: <b>${(stats.processing_time_ms/1000).toFixed(2)} detik</b>`
+                        : '';
+                    let bypassInfo = stats.admin_bypass_used 
+                        ? `<br><span class="text-warning"><i class="fa-solid fa-bolt me-1"></i> <b>Mode Admin Test</b> (lock di-skip)</span>`
+                        : '';
                     pesan = `Sinkronisasi selesai:<br>
                         <small class="text-muted">
                             <i class="fa-solid fa-pen-to-square me-1"></i> Update: <b>${stats.updated || 0}</b> baris<br>
                             <i class="fa-solid fa-plus me-1"></i> Baru: <b>${stats.inserted || 0}</b> baris<br>
                             <i class="fa-solid fa-check me-1"></i> Tanpa perubahan: <b>${stats.skipped_unchanged || 0}</b> baris<br>
                             <i class="fa-solid fa-gauge-high me-1"></i> Sisa kuota simpan: <b>${stats.rate_limit_remaining || '?'}</b>/30
-                        </small>`;
+                        </small>
+                        ${timingInfo}${bypassInfo}`;
                 }
                 Swal.fire('Berhasil!', pesan, 'success');
                 
@@ -1656,16 +1665,21 @@ function simpanKeCloud() {
                 });
             }
             else if (res.status === 'busy') {
-                // Sudah retry 2x masih busy → kasih pesan manual
+                // Sudah retry 2x masih busy → kasih pesan manual + debug info
+                let debugInfo = res.debug_info 
+                    ? `<br><br><details><summary class="small text-muted">Debug Info (klik untuk lihat)</summary>
+                       <pre class="small text-muted" style="text-align: left; white-space: pre-wrap;">${JSON.stringify(res.debug_info, null, 2)}</pre></details>`
+                    : '';
                 Swal.fire({
                     title: 'Server Sedang Sibuk',
-                    html: `Server sedang memproses banyak request dari SKPD lain.<br><br>
+                    html: `${res.message || 'Server sedang memproses banyak request dari SKPD lain.'}<br><br>
                         <b>Saran:</b><br>
                         <small>
-                        • Tunggu 1-2 menit, lalu klik Simpan Draft lagi<br>
+                        • Tutup semua tab Google Sheets yang terbuka di browser<br>
+                        • Tunggu 2 menit, lalu klik Simpan Draft lagi<br>
                         • Atau gunakan <b>Backup Lokal</b> untuk simpan sementara<br>
                         • Data Anda tetap aman di layar browser
-                        </small>`,
+                        </small>${debugInfo}`,
                     icon: 'warning',
                     confirmButtonText: 'OK, saya tunggu',
                     confirmButtonColor: '#f59e0b'
@@ -1673,7 +1687,7 @@ function simpanKeCloud() {
             }
             else Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
         })
-        .catch(() => Swal.fire('Error', 'Gagal terkoneksi. Cek koneksi internet Anda atau gunakan tombol backup paling bawah untuk menyimpan data ke drive lokal .', 'error'));
+        .catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server BPKAD. Cek koneksi internet Anda.', 'error'));
 }
 
 function muatDataDariCloud() {
@@ -2111,6 +2125,6 @@ function eksekusiRestoreLokal(dataServer) {
             }
         });
         
-        Swal.fire('Restore Berhasil!', `${count} baris data berhasil dikembalikan dari file Backup Lokal Anda.`, 'success');
+        Swal.fire('Restore Sempurna!', `${count} baris data berhasil dikembalikan dari file Backup Lokal Anda.`, 'success');
     }, 600);
 }
