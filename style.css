@@ -36,9 +36,25 @@ body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; 
     max-width: 1400px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); position: relative;
 }
 
-.table-lra { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px; table-layout: auto; }
+.table-lra { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 11px; 
+    margin-top: 15px; 
+    /* KUNCI UTAMA 1: Mengunci kerangka kolom secara absolut */
+    table-layout: fixed; 
+}
 .table-lra th { border: 1px solid #000 !important; text-align: center; vertical-align: middle; padding: 8px 4px; font-weight: bold; background-color: #ffffff !important; font-size: 10px; }
-.table-lra td { border: 1px solid #000 !important; vertical-align: top; padding: 5px; line-height: 1.4; word-wrap: break-word; }
+.table-lra td { 
+    border: 1px solid #000 !important; 
+    vertical-align: top; 
+    padding: 3px 5px !important; /* DIET PADDING: Lebih rapat atas bawah */
+    line-height: 1.2; /* DIET LINE HEIGHT: Spasi antar teks dirapatkan */
+    /* KUNCI UTAMA 2: Memaksa teks turun ke bawah jika mentok garis */
+    word-wrap: break-word; 
+    overflow-wrap: break-word;
+    white-space: normal;
+}
 .table-lra td:first-child { white-space: nowrap !important; font-family: Arial, sans-serif; text-align: left; padding-right: 10px !important; }
 
 /* === HIERARKI KEDALAMAN === */
@@ -63,13 +79,30 @@ body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; 
 .print-view-text { 
     display: none; 
     white-space: pre-wrap; 
+    word-break: break-word;
     font-size: 11px; 
     font-family: "Times New Roman", Times, serif; 
-    margin-top: 5px; 
+    margin-top: 2px; /* Margin atas dikurangi agar menempel */
+    line-height: 1.15; /* Spasi antar baris rincian dirapatkan */
     text-align: justify; 
 }
+
+.table-lra tr {
+    page-break-inside: avoid;
+}
+
 .cell-penjelasan { vertical-align: middle !important; }
 .modal-body-custom { background-color: #f8fafc; }
+
+/* === BARIS LANJUTAN PENJELASAN (SMART SPLIT-PAGINATION) === */
+/* Otomatis diciptakan saat penjelasan melebihi sisa halaman.
+   Kolom data dikosongkan, hanya kolom PENJELASAN yang berisi sisa teks. */
+.continuation-row td { background-color: #fafbfc; }
+.continuation-row .cell-penjelasan { vertical-align: top !important; }
+.continuation-row .print-view-text { margin-top: 0; }
+@media print {
+    .continuation-row td { background-color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 
 /* === UI WARNING & MODAL PRO (PREMIUM MINIMALIST) === */
 .nav-pills .nav-link { 
