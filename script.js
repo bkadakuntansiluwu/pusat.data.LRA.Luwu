@@ -6,9 +6,8 @@ let modalAsisten;
 let modalKeterangan;
 
 // === STATE TTD CLOUD SYNC ===
-let ttdSyncTimer = null;        // debounce timer untuk auto-save TTD
-let ttdCloudLoaded = false;     // flag: apakah TTD sudah di-fetch dari cloud untuk SKPD saat ini
-let ttdSyncInProgress = false;  // flag: mencegah loop infinite saat populate TTD dari cloud
+let ttdSyncTimer = null;
+let ttdSyncInProgress = false;
 
 document.addEventListener("DOMContentLoaded", function() {
     modalAsisten = new bootstrap.Modal(document.getElementById('modalPenjelasan'));
@@ -16,15 +15,9 @@ document.addEventListener("DOMContentLoaded", function() {
     
     isiDropdownTahunOtomatis();
     
-    // === SENSOR IDENTITAS PENGGUNA UNTUK AUDIT LOG ===
-    // Sekali input, tersimpan di localStorage. Dipakai untuk audit log & TTD sync.
-    cekIdentitasPengguna();
-    
     // === SENSOR AUTO-SAVE TANDA TANGAN (LOCAL + CLOUD SYNC) ===
-    // Strategi cerdas:
-    //   1. Saat user ketik → simpan ke localStorage (instant)
-    //   2. Debounce 2 detik → sync ke cloud (cross-device)
-    //   3. Saat SKPD ganti → fetch dari cloud dulu, fallback ke localStorage
+    // Semua user (admin BPKAD & SKPD) pakai sistem yang sama.
+    // Saat user ketik → simpan localStorage + debounce 2 detik → sync ke cloud
     document.getElementById('ttd-jabatan').addEventListener('input', function() { 
         if(kodeSkpdAktif) {
             localStorage.setItem('TTD_JAB_' + kodeSkpdAktif, this.innerText); 
@@ -46,210 +39,38 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // =========================================================================
-// FUNGSI: CEK IDENTITAS PENGGUNA (untuk audit log)
-// Versi 2.5: Hapus prompt wajib. Auto-detect nama dari TTD cloud.
-// Prompt hanya muncul sebagai fallback kalau TTD cloud kosong.
+// USER AGENT UNTUK AUDIT LOG (simple, semua user sama)
+// Pakai nama TTD + browser info. Tidak ada deteksi admin/operator.
 // =========================================================================
-function cekIdentitasPengguna() {
-    let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
-    
-    // Kalau nama sudah ada di localStorage → pakai, tidak perlu prompt
-    if (namaTersimpan) {
-        console.log('✓ Identitas pengguna sudah tersimpan:', namaTersimpan);
-        return; // tidak muncul apa-apa
-    }
-    
-    // Kalau belum ada, TUNGGU sampai SKPD upload Excel → TTD cloud load
-    // Jika TTD cloud punya data → auto-set nama dari sana
-    // Jika TTD cloud kosong → baru prompt nama (fallback)
-    // Lihat fungsi muatTTDDariCloud() bagian "auto-set nama"
-    
-    console.log('ℹ️ Identitas belum ada. Akan auto-detect dari TTD cloud setelah upload Excel.');
-}
-
-// =========================================================================
-// FUNGSI: SET IDENTITAS PENGGUNA DARI TTD CLOUD (auto, tanpa prompt)
-// Dipanggil saat TTD cloud berhasil di-load
-// =========================================================================
-function setIdentitasDariTTDCloud(namaTTD) {
-    if (!namaTTD) return;
-    
-    let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
-    
-    // Kalau belum ada nama tersimpan → set otomatis dari TTD cloud
-    if (!namaTersimpan) {
-        localStorage.setItem('LRA_USER_NAME', namaTTD);
-        console.log('✓ Identitas auto-detected dari TTD cloud:', namaTTD);
-        
-        // Beritahu user sekali saja (silent notification, bukan prompt)
-        _tampilkanNotifikasiIdentitas(namaTTD);
-    }
-}
-
-// =========================================================================
-// FUNGSI: TAMPILKAN NOTIFIKASI IDENTITAS (silent, bukan prompt wajib)
-// Muncul di pojok kanan bawah, hilang otomatis 4 detik
-// =========================================================================
-function _tampilkanNotifikasiIdentitas(nama) {
-    let isAdmin = isAdminBPKAD();
-    let peran = isAdmin ? 'Admin BPKAD' : 'Operator SKPD';
-    let icon = isAdmin ? '⚡' : '👤';
-    let warna = isAdmin ? '#f59e0b' : '#10b981';
-    
-    // Buat toast notification
-    let toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-        background: white; border-left: 4px solid ${warna};
-        padding: 12px 20px; border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px;
-        max-width: 350px; animation: slideIn 0.3s ease;
-    `;
-    toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 20px;">${icon}</span>
-            <div>
-                <div style="font-weight: 600; color: #0f172a;">Halo, ${nama}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                    Terdeteksi sebagai <b style="color: ${warna};">${peran}</b>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Tambahkan animation CSS
-    let style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(toast);
-    
-    // Hapus otomatis setelah 4 detik
-    setTimeout(() => {
-        toast.style.transition = 'opacity 0.3s, transform 0.3s';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
-// =========================================================================
-// FUNGSI: PROMPT NAMA SEBAGAI FALLBACK (hanya kalau TTD cloud kosong)
-// Dipanggil manual saat user mau simpan data tapi belum ada identitas
-// =========================================================================
-function promptIdentitasFallback() {
-    return new Promise((resolve) => {
-        let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
-        if (namaTersimpan) {
-            resolve(namaTersimpan);
-            return;
-        }
-        
-        Swal.fire({
-            title: 'Identitas Diperlukan 👋',
-            html: `
-                <div style="text-align: left; font-size: 13px; line-height: 1.6;">
-                    Sebelum menyimpan data, mohon masukkan nama Anda.<br><br>
-                    <b>📋 Format yang disarankan:</b><br>
-                    <small class="text-muted">
-                    • Admin BPKAD: <code>Admin BPKAD - Nama</code><br>
-                    • SKPD: <code>Nama (Dinas XXX)</code>
-                    </small><br><br>
-                    <small class="text-muted">Nama akan tersimpan di browser ini. Untuk komputer lain, sistem akan auto-detect dari TTD cloud.</small>
-                </div>
-            `,
-            input: 'text',
-            inputPlaceholder: 'Contoh: Bpk. Budi (Dinas Pendidikan)',
-            inputAttributes: { maxlength: 80 },
-            inputValidator: (value) => {
-                if (!value || value.trim().length < 3) return 'Nama terlalu pendek (min 3 huruf)';
-            },
-            showCancelButton: false,
-            confirmButtonText: 'Simpan & Lanjut',
-            confirmButtonColor: '#0f172a',
-            allowOutsideClick: false,
-            allowEscapeKey: false
-        }).then((result) => {
-            if (result.isConfirmed) {
-                let nama = result.value.trim();
-                localStorage.setItem('LRA_USER_NAME', nama);
-                _tampilkanNotifikasiIdentitas(nama);
-                resolve(nama);
-            } else {
-                resolve(null);
-            }
-        });
-    });
-}
-
-// =========================================================================
-// FUNGSI: DAPATKAN IDENTITAS PENGGUNA (untuk audit log + TTD sync)
-// =========================================================================
-function getIdentitasPengguna() {
-    return localStorage.getItem('LRA_USER_NAME') || 'unknown';
-}
-
-// =========================================================================
-// FUNGSI: CEK APAKAH USER SAAT INI ADALAH ADMIN BPKAD
-// Admin BPKAD boleh bypass lock untuk testing cepat.
-// SKPD tetap pakai lock normal (anti-tabrakan).
-// Deteksi berdasarkan nama yang diinput saat pertama buka aplikasi.
-// =========================================================================
-const ADMIN_BPKAD_KEYWORDS = ['admin', 'bpkad', 'bendahara', 'kabid', 'kepala badan'];
-
-function isAdminBPKAD() {
-    let nama = (localStorage.getItem('LRA_USER_NAME') || '').toLowerCase();
-    if (!nama) return false;
-    
-    // Cek apakah nama mengandung keyword admin
-    return ADMIN_BPKAD_KEYWORDS.some(kw => nama.includes(kw));
-}
-
-// =========================================================================
-// FUNGSI: DAPATKAN USER AGENT LENGKAP (nama + browser info)
-// =========================================================================
-function getUserAgentLengkap() {
-    let nama = getIdentitasPengguna();
-    let browser = navigator.userAgent.substring(0, 100);
-    return `${nama} | ${browser}`;
+function getUserAgentUntukAudit() {
+    let browser = navigator.userAgent.substring(0, 120);
+    let namaTTD = document.getElementById('ttd-nama') 
+        ? document.getElementById('ttd-nama').innerText.trim().substring(0, 40) 
+        : '';
+    return namaTTD ? `${namaTTD} | ${browser}` : browser;
 }
 
 // =========================================================================
 // FUNGSI: JADWAL SYNC TTD KE CLOUD (DEBOUNCED 2 DETIK)
-// Cegah spam request: user ketik 10x dalam 2 detik → cuma kirim 1x di akhir
 // =========================================================================
 function jadwalSyncTTDKeCloud() {
-    // Tampilkan badge "Mengetik..." saat user aktif mengetik
     perbaruiBadgeTTD('unsaved');
-    
-    // Kalau ada timer pending, batalkan
     if (ttdSyncTimer) clearTimeout(ttdSyncTimer);
-    
-    // Set timer baru 2 detik
-    ttdSyncTimer = setTimeout(() => {
-        syncTTDKeCloud();
-    }, 2000);
+    ttdSyncTimer = setTimeout(() => syncTTDKeCloud(), 2000);
 }
 
 // =========================================================================
-// FUNGSI: SYNC TTD KE CLOUD (kirim ke server)
+// FUNGSI: SYNC TTD KE CLOUD (kirim ke server, silent)
 // =========================================================================
 function syncTTDKeCloud() {
     if (!kodeSkpdAktif) return;
-    if (ttdSyncInProgress) return; // cegah loop
+    if (ttdSyncInProgress) return;
     
     let tahun = document.getElementById('selectTahun').value;
     let jabatan = document.getElementById('ttd-jabatan').innerText.trim();
     let nama = document.getElementById('ttd-nama').innerText.trim();
     let nip = document.getElementById('ttd-nip').innerText.trim();
     
-    // Skip kalau semua kosong (jangan kirim data kosong ke server)
     if (!jabatan && !nama && !nip) return;
     
     let payload = {
@@ -260,11 +81,10 @@ function syncTTDKeCloud() {
         jabatan: jabatan,
         nama: nama,
         nip: nip,
-        updated_by: getIdentitasPengguna(),
-        user_agent: getUserAgentLengkap()
+        updated_by: nama || 'unknown',
+        user_agent: getUserAgentUntukAudit()
     };
     
-    // Silent sync (tidak munculkan popup agar tidak mengganggu user)
     fetch(SCRIPT_URL_DATABASE, {
         method: "POST",
         body: JSON.stringify(payload)
@@ -272,20 +92,16 @@ function syncTTDKeCloud() {
     .then(r => r.json())
     .then(res => {
         if (res.status === 'success') {
-            // Silent success — ttd sudah tersimpan di cloud
             perbaruiBadgeTTD('synced', new Date().toISOString());
             console.log('✓ TTD synced to cloud for SKPD:', kodeSkpdAktif);
         } else if (res.status === 'busy') {
-            // Server sibuk → retry 5 detik lagi (silent)
             perbaruiBadgeTTD('local_only');
             setTimeout(() => syncTTDKeCloud(), 5000);
         } else {
-            console.warn('TTD sync warning:', res.message);
             perbaruiBadgeTTD('local_only');
         }
     })
     .catch(err => {
-        // Silent fail — TTD tetap tersimpan di localStorage, akan di-retry saat user save data utama
         perbaruiBadgeTTD('offline');
         console.warn('TTD sync gagal (offline?):', err.message);
     });
@@ -293,16 +109,11 @@ function syncTTDKeCloud() {
 
 // =========================================================================
 // FUNGSI: LOAD TTD DARI CLOUD (saat SKPD terdeteksi)
-// Strategi cerdas:
-//   1. Fetch dari cloud
-//   2. Kalau ada → populate fields + update localStorage (override local)
-//   3. Kalau tidak ada → cek localStorage, kalau ada → push ke cloud
-//   4. Kalau keduanya kosong → biarkan kosong (user isi manual)
+// Strategi: cloud first, fallback localStorage
 // =========================================================================
 function muatTTDDariCloud() {
     if (!kodeSkpdAktif) return;
     
-    // === TAMPILKAN INDICATOR LOADING ===
     perbaruiBadgeTTD('loading');
     
     let tahun = document.getElementById('selectTahun').value;
@@ -311,49 +122,33 @@ function muatTTDDariCloud() {
     fetch(url)
     .then(r => r.json())
     .then(res => {
-        ttdSyncInProgress = true; // cegah event 'input' trigger sync balik
+        ttdSyncInProgress = true;
         
         if (res.status === 'success' && res.data) {
-            // Cloud punya data → populate fields
             let data = res.data;
-            
             if (data.jabatan) document.getElementById('ttd-jabatan').innerText = data.jabatan;
             if (data.nama) document.getElementById('ttd-nama').innerText = data.nama;
             if (data.nip) document.getElementById('ttd-nip').innerText = data.nip;
             
-            // Update localStorage juga (supaya next time cepat)
             localStorage.setItem('TTD_JAB_' + kodeSkpdAktif, data.jabatan || '');
             localStorage.setItem('TTD_NAMA_' + kodeSkpdAktif, data.nama || '');
             localStorage.setItem('TTD_NIP_' + kodeSkpdAktif, data.nip || '');
             
-            // === AUTO-SET IDENTITAS PENGGUNA DARI TTD CLOUD (v2.5) ===
-            // Pakai "Updated_By" atau "Nama" dari TTD cloud sebagai identitas user
-            let namaUntukIdentitas = data.updated_by || data.nama;
-            if (namaUntukIdentitas) {
-                setIdentitasDariTTDCloud(namaUntukIdentitas);
-            }
-            
-            ttdCloudLoaded = true;
             perbaruiBadgeTTD('synced', data.updated_at);
             console.log('✓ TTD dimuat dari cloud untuk SKPD:', kodeSkpdAktif);
         } else {
-            // Cloud tidak punya data → cek localStorage
             let localJab = localStorage.getItem('TTD_JAB_' + kodeSkpdAktif);
             let localNma = localStorage.getItem('TTD_NAMA_' + kodeSkpdAktif);
             let localNip = localStorage.getItem('TTD_NIP_' + kodeSkpdAktif);
             
             if (localJab || localNma || localNip) {
-                // LocalStorage ada → populate + push ke cloud (backup)
                 if (localJab) document.getElementById('ttd-jabatan').innerText = localJab;
                 if (localNma) document.getElementById('ttd-nama').innerText = localNma;
                 if (localNip) document.getElementById('ttd-nip').innerText = localNip;
                 
-                // Push ke cloud (silent)
                 setTimeout(() => syncTTDKeCloud(), 500);
                 perbaruiBadgeTTD('local_only');
-                console.log('✓ TTD dari localStorage, sync ke cloud untuk SKPD:', kodeSkpdAktif);
             } else {
-                // Keduanya kosong → user belum pernah isi
                 perbaruiBadgeTTD('empty');
             }
         }
@@ -361,7 +156,6 @@ function muatTTDDariCloud() {
         setTimeout(() => { ttdSyncInProgress = false; }, 500);
     })
     .catch(err => {
-        // Cloud gagal → fallback ke localStorage saja
         let localJab = localStorage.getItem('TTD_JAB_' + kodeSkpdAktif);
         let localNma = localStorage.getItem('TTD_NAMA_' + kodeSkpdAktif);
         let localNip = localStorage.getItem('TTD_NIP_' + kodeSkpdAktif);
@@ -372,25 +166,23 @@ function muatTTDDariCloud() {
         
         ttdSyncInProgress = false;
         perbaruiBadgeTTD('offline');
-        console.warn('TTD cloud load gagal, fallback ke localStorage:', err.message);
     });
 }
 
 // =========================================================================
-// FUNGSI: PERBARUI BADGE STATUS TTD (di sebelah kolom TTD)
-// Status: loading | synced | local_only | empty | offline | unsaved
+// FUNGSI: PERBARUI BADGE STATUS TTD
 // =========================================================================
 function perbaruiBadgeTTD(status, updatedAt) {
     let badge = document.getElementById('ttdStatusBadge');
-    if (!badge) return; // badge belum ada di HTML (kompatibilitas mundur)
+    if (!badge) return;
     
     let config = {
-        loading:    { class: 'bg-secondary',   text: '⏳ Memuat...',          title: 'Sedang ambil data dari cloud' },
-        synced:     { class: 'bg-success',     text: '☁ Tersimpan Cloud',     title: updatedAt ? `Tersinkron: ${new Date(updatedAt).toLocaleString('id-ID')}` : 'Tersinkron dengan cloud' },
-        local_only: { class: 'bg-warning',     text: '💾 Local Only',         title: 'Hanya tersimpan di browser, belum sync ke cloud' },
-        empty:      { class: 'bg-light',       text: '✏ Belum diisi',         title: 'Ketik TTD untuk menyimpan' },
-        offline:    { class: 'bg-danger',      text: ' Offline',             title: 'Gagal koneksi cloud, pakai localStorage' },
-        unsaved:    { class: 'bg-info',        text: ' Mengetik...',          title: 'Akan otomatis sync 2 detik setelah berhenti ketik' }
+        loading:    { class: 'bg-secondary', text: '⏳ Memuat...', title: 'Sedang ambil data dari cloud' },
+        synced:     { class: 'bg-success',   text: '☁ Tersimpan Cloud', title: updatedAt ? `Tersinkron: ${new Date(updatedAt).toLocaleString('id-ID')}` : 'Tersinkron dengan cloud' },
+        local_only: { class: 'bg-warning',   text: '💾 Local Only', title: 'Hanya tersimpan di browser, belum sync ke cloud' },
+        empty:      { class: 'bg-light',     text: '✏ Belum diisi', title: 'Ketik TTD untuk menyimpan' },
+        offline:    { class: 'bg-danger',    text: ' Offline', title: 'Gagal koneksi cloud, pakai localStorage' },
+        unsaved:    { class: 'bg-info',      text: ' Mengetik...', title: 'Akan otomatis sync 2 detik setelah berhenti ketik' }
     };
     
     let cfg = config[status] || config.empty;
@@ -410,12 +202,8 @@ function hapusTTDDariCloud() {
     
     Swal.fire({
         title: 'Hapus Tanda Tangan?',
-        html: `
-            <div style="text-align: left; font-size: 13px; line-height: 1.6;">
-                TTD untuk <b>SKPD ${kodeSkpdAktif}</b> akan dihapus dari <b>database cloud</b>.<br>
-                <small class="text-muted">Tindakan ini dicatat di Audit Log. SKPD lain yang buka aplikasi tidak akan melihat TTD ini lagi.</small>
-            </div>
-        `,
+        html: `TTD untuk <b>SKPD ${kodeSkpdAktif}</b> akan dihapus dari <b>database cloud</b>.<br>
+            <small class="text-muted">Tindakan ini dicatat di Audit Log.</small>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -432,7 +220,7 @@ function hapusTTDDariCloud() {
             action: 'delete_ttd',
             tahun: document.getElementById('selectTahun').value,
             kode_skpd: kodeSkpdAktif,
-            updated_by: getIdentitasPengguna()
+            updated_by: document.getElementById('ttd-nama').innerText.trim() || 'unknown'
         };
         
         fetch(SCRIPT_URL_DATABASE, {
@@ -442,13 +230,11 @@ function hapusTTDDariCloud() {
         .then(r => r.json())
         .then(res => {
             if (res.status === 'success' || res.status === 'not_found') {
-                // Kosongkan field TTD
                 ttdSyncInProgress = true;
                 document.getElementById('ttd-jabatan').innerText = 'KEPALA SKPD';
                 document.getElementById('ttd-nama').innerText = 'NAMA KEPALA SKPD';
                 document.getElementById('ttd-nip').innerText = 'NIP. 19700101 200001 1 001';
                 
-                // Hapus dari localStorage juga
                 localStorage.removeItem('TTD_JAB_' + kodeSkpdAktif);
                 localStorage.removeItem('TTD_NAMA_' + kodeSkpdAktif);
                 localStorage.removeItem('TTD_NIP_' + kodeSkpdAktif);
@@ -496,8 +282,7 @@ function updateInfoTandaTangan() {
 
     if(!kodeSkpdAktif) return;
     
-    // === CERDAS: Saat SKPD aktif berubah atau tahun berubah, fetch TTD dari cloud ===
-    // Strategi: cloud first, fallback localStorage (dilakukan di muatTTDDariCloud)
+    // Saat SKPD terdeteksi atau tahun berubah → auto-load TTD dari cloud
     muatTTDDariCloud();
 }
 
@@ -928,7 +713,7 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
         btn.innerHTML = '<i class="fa-regular fa-pen-to-square text-secondary me-1"></i> Isi Penjelasan';
     } else if (realisasi === 0 && printText.trim() !== '') {
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
-        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #0D0DA8; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
         btn.innerHTML = '<i class="fa-solid fa-check-double text-success me-1"></i> Murni Tersimpan';
     } else if (Math.abs(selisih) < 1) { 
         if (statusTeks !== "OK") { // KETAHUAN BOHONG
@@ -1265,16 +1050,9 @@ function simpanDariModal() {
 
 // =========================================================================
 // MESIN PAGINASI CERDAS (ANTI-BOLONG) — SMART SPLIT-PAGINATION ENGINE
+// Saat baris tidak muat di halaman, pecah penjelasan secara granular.
+// Bagian yang muat tetap di halaman ini; sisa pindah ke baris lanjutan.
 // =========================================================================
-// Strategi: ketika sebuah baris tidak muat di sisa halaman, pecah isi
-// PENJELASAN secara granular (node-per-node, lalu karakter-per-karakter
-// via binary search). Bagian yang muat tetap di halaman saat ini; sisanya
-// dibungkus jadi "baris lanjutan" dengan kolom data KOSONG — sehingga
-// penjelasan terlepas dari judul/rincian dan kertas tidak ada yang kosong.
-// =========================================================================
-
-// Helper: binary search panjang teks maksimal yang muat di sisa halaman.
-// makeProbe(len) -> Node yang akan diuji. Mengembalikan jumlah karakter terbesar yang pas.
 function binarySearchFit(makeProbe, penjelasanDiv, clone, maxBottom, maxLen) {
     let lo = 0, hi = maxLen, best = 0;
     while (lo <= hi) {
@@ -1283,29 +1061,19 @@ function binarySearchFit(makeProbe, penjelasanDiv, clone, maxBottom, maxLen) {
         penjelasanDiv.appendChild(probe);
         let bottom = clone.getBoundingClientRect().bottom;
         penjelasanDiv.removeChild(probe);
-        if (bottom <= maxBottom) {
-            best = mid;
-            lo = mid + 1;
-        } else {
-            hi = mid - 1;
-        }
+        if (bottom <= maxBottom) { best = mid; lo = mid + 1; } else { hi = mid - 1; }
     }
     return best;
 }
 
-// Helper: cari word boundary terdekat sebelum posisi best (prefer newline > space > hard cut).
 function findWordBoundary(text, best) {
-    let breakAt = best;
     let lastNL = text.lastIndexOf('\n', best - 1);
     if (lastNL > best * 0.5) return lastNL + 1;
     let lastSpace = text.lastIndexOf(' ', best - 1);
     if (lastSpace > best * 0.5) return lastSpace + 1;
-    return breakAt;
+    return best;
 }
 
-// Helper utama: coba pecah penjelasan pada clone (baris) agar muat di maxBottom.
-// Return { success: true, remainingHTML: '...' } jika pecah berhasil.
-// Return { success: false } jika tidak bisa dipecah (baris data saja sudah tidak muat, atau tidak ada penjelasan).
 function trySplitPenjelasan(clone, maxBottom) {
     let penjelasanDiv = clone.querySelector('.print-view-text');
     if (!penjelasanDiv) return { success: false };
@@ -1314,54 +1082,29 @@ function trySplitPenjelasan(clone, maxBottom) {
     let originalText = penjelasanDiv.innerText;
     if (!originalText.trim()) return { success: false };
 
-    // === TAHAP 1: Ukur baseline (baris data tanpa penjelasan) ===
     penjelasanDiv.innerHTML = '';
     let baselineBottom = clone.getBoundingClientRect().bottom;
-
-    // Kalau baris data saja sudah tidak muat → tidak bisa dipecah
-    if (baselineBottom > maxBottom) {
-        penjelasanDiv.innerHTML = originalHTML;
-        return { success: false };
-    }
+    if (baselineBottom > maxBottom) { penjelasanDiv.innerHTML = originalHTML; return { success: false }; }
 
     let availablePx = maxBottom - baselineBottom;
-    let minLineH = 14; // tinggi minimal satu baris teks 11px dengan line-height 1.15
+    if (availablePx < 14) { penjelasanDiv.innerHTML = originalHTML; return { success: false }; }
 
-    // Sisa ruang kurang dari satu baris → tidak bisa dipecah
-    if (availablePx < minLineH) {
-        penjelasanDiv.innerHTML = originalHTML;
-        return { success: false };
-    }
-
-    // === TAHAP 2: Snapshot childNodes asli (teks + <div> harga + ...) ===
     penjelasanDiv.innerHTML = originalHTML;
     let originalNodes = Array.from(penjelasanDiv.childNodes);
-
-    // === TAHAP 3: Rebuild node-per-node sampai ketemu yang tidak muat ===
     penjelasanDiv.innerHTML = '';
     let remainingNodes = [];
     let splitDone = false;
 
     for (let node of originalNodes) {
-        if (splitDone) {
-            remainingNodes.push(node);
-            continue;
-        }
-
+        if (splitDone) { remainingNodes.push(node); continue; }
         penjelasanDiv.appendChild(node.cloneNode(true));
         let testBottom = clone.getBoundingClientRect().bottom;
-
         if (testBottom > maxBottom) {
-            // Node ini tidak muat → coba pecah di level karakter
             penjelasanDiv.removeChild(penjelasanDiv.lastChild);
             let didSplit = false;
-
             if (node.nodeType === Node.TEXT_NODE) {
                 let text = node.textContent;
-                let best = binarySearchFit(
-                    (len) => document.createTextNode(text.substring(0, len)),
-                    penjelasanDiv, clone, maxBottom, text.length
-                );
+                let best = binarySearchFit((len) => document.createTextNode(text.substring(0, len)), penjelasanDiv, clone, maxBottom, text.length);
                 if (best > 0) {
                     let breakAt = findWordBoundary(text, best);
                     let firstPart = text.substring(0, breakAt);
@@ -1372,63 +1115,39 @@ function trySplitPenjelasan(clone, maxBottom) {
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 let text = node.innerText || node.textContent || '';
-                let best = binarySearchFit(
-                    (len) => {
-                        let e = node.cloneNode(false);
-                        e.innerText = text.substring(0, len);
-                        return e;
-                    },
-                    penjelasanDiv, clone, maxBottom, text.length
-                );
+                let best = binarySearchFit((len) => {
+                    let e = node.cloneNode(false); e.innerText = text.substring(0, len); return e;
+                }, penjelasanDiv, clone, maxBottom, text.length);
                 if (best > 0) {
                     let breakAt = findWordBoundary(text, best);
                     let firstPart = text.substring(0, breakAt);
                     let restPart = text.substring(breakAt);
                     if (firstPart.trim()) {
-                        let firstElem = node.cloneNode(false);
-                        firstElem.innerText = firstPart;
+                        let firstElem = node.cloneNode(false); firstElem.innerText = firstPart;
                         penjelasanDiv.appendChild(firstElem);
                     }
                     if (restPart.trim()) {
-                        let restElem = node.cloneNode(false);
-                        restElem.innerText = restPart;
+                        let restElem = node.cloneNode(false); restElem.innerText = restPart;
                         remainingNodes.unshift(restElem);
                     }
                     didSplit = true;
                 }
             }
-
-            if (!didSplit) {
-                // Node tidak bisa dipecah (best=0) → seluruh node pindah ke sisa
-                remainingNodes.unshift(node);
-            }
+            if (!didSplit) remainingNodes.unshift(node);
             splitDone = true;
         }
     }
 
-    // === TAHAP 4: Validasi hasil pecahan ===
     let keptText = penjelasanDiv.innerText.trim();
-    if (!keptText) {
-        // Tidak ada konten yang muat → restore & nyatakan tidak bisa dipecah
+    if (!keptText || remainingNodes.length === 0) {
         penjelasanDiv.innerHTML = originalHTML;
         return { success: false };
     }
-    if (remainingNodes.length === 0) {
-        // Semua muat — tidak perlu pecah (kasus jarang, measurement sudah benar)
-        penjelasanDiv.innerHTML = originalHTML;
-        return { success: false };
-    }
-
-    // Bungkus sisa nodes jadi HTML string untuk baris lanjutan
     let tempContainer = document.createElement('div');
     remainingNodes.forEach(n => tempContainer.appendChild(n));
-    return {
-        success: true,
-        remainingHTML: tempContainer.innerHTML
-    };
+    return { success: true, remainingHTML: tempContainer.innerHTML };
 }
 
-// Helper: bangun baris lanjutan dengan kolom data KOSONG, hanya berisi sisa penjelasan.
 function buildContinuationRow(remainingHTML, padLevel) {
     let tr = document.createElement('tr');
     tr.className = `pad-lvl-${padLevel} style-rincian continuation-row`;
@@ -1436,13 +1155,8 @@ function buildContinuationRow(remainingHTML, padLevel) {
     tr.innerHTML = `
         <td></td>
         <td class="uraian-cell" style="font-style: italic; color: #94a3b8; font-size: 9px; padding-top: 4px;">↳ lanjutan penjelasan</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td class="cell-penjelasan">
-            <div class="print-view-text">${remainingHTML}</div>
-        </td>
+        <td></td><td></td><td></td><td></td>
+        <td class="cell-penjelasan"><div class="print-view-text">${remainingHTML}</div></td>
     `;
     return tr;
 }
@@ -1454,7 +1168,7 @@ function cetakPro() {
         return;
     }
 
-    Swal.fire({ title: 'Tunggu Sebentar Yah...', text: 'Mesin Cerdas Sedang Menyusun Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({ title: 'Tunggu...', text: 'Sedang memproses halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     setTimeout(() => {
         let mulaiHalaman = parseInt(document.getElementById('inputHalaman').value) || 1;
@@ -1470,13 +1184,11 @@ function cetakPro() {
         let pageNum = mulaiHalaman;
         let currentPage = createPageTemplate(pageNum, true);
         wrapper.appendChild(currentPage);
-
+        
         let currentTbody = currentPage.querySelector('.tbody-render');
         let currentFooter = currentPage.querySelector('.pdf-footer-pro');
 
-        // === MESIN ANTRIAN CERDAS ===
-        // Setiap item bisa: { type: 'row', source: <Node> } atau
-        //                    { type: 'continuation', remainingHTML: '...', padLevel: N }
+        // === MESIN ANTRIAN CERDAS (anti-bolong + pecah penjelasan) ===
         let queue = rows.map(r => ({
             type: 'row',
             source: r,
@@ -1484,7 +1196,7 @@ function cetakPro() {
         }));
 
         let safetyCounter = 0;
-        const SAFETY_MAX = 10000; // anti-infinite-loop
+        const SAFETY_MAX = 10000;
 
         while (queue.length > 0 && safetyCounter < SAFETY_MAX) {
             safetyCounter++;
@@ -1501,25 +1213,21 @@ function cetakPro() {
 
             let rowRect = clone.getBoundingClientRect();
             let footerRect = currentFooter.getBoundingClientRect();
-            let maxBottom = footerRect.top - 5; // toleransi 5px
+            let maxBottom = footerRect.top - 5;
 
-            if (rowRect.bottom <= maxBottom) {
-                // MUAT — lanjut ke item berikutnya
-                continue;
-            }
+            if (rowRect.bottom <= maxBottom) continue;
 
-            // TIDAK MUAT — coba pecah penjelasan dulu
+            // Tidak muat → coba pecah penjelasan
             let split = trySplitPenjelasan(clone, maxBottom);
 
             if (split.success) {
-                // Pecah berhasil — sisa penjelasan masuk antrian paling depan
                 queue.unshift({
                     type: 'continuation',
                     remainingHTML: split.remainingHTML,
                     padLevel: item.padLevel
                 });
             } else {
-                // Tidak bisa dipecah — pindah seluruh baris ke halaman baru
+                // Tidak bisa dipecah → pindah seluruh baris ke halaman baru
                 currentTbody.removeChild(clone);
                 pageNum++;
                 currentPage = createPageTemplate(pageNum, false);
@@ -1528,11 +1236,10 @@ function cetakPro() {
                 currentFooter = currentPage.querySelector('.pdf-footer-pro');
                 currentTbody.appendChild(clone);
 
-                // Di halaman baru, jika baris masih lebih tinggi dari halaman penuh → pecah paksa
+                // Paksa pecah kalau masih tinggi di halaman baru
                 let freshRect = clone.getBoundingClientRect();
                 let freshFooter = currentFooter.getBoundingClientRect();
                 let freshMaxBottom = freshFooter.top - 5;
-
                 if (freshRect.bottom > freshMaxBottom) {
                     let forceSplit = trySplitPenjelasan(clone, freshMaxBottom);
                     if (forceSplit.success) {
@@ -1542,7 +1249,6 @@ function cetakPro() {
                             padLevel: item.padLevel
                         });
                     }
-                    // Jika force-split gagal, baris dibiarkan apa adanya (kasus ekstrem)
                 }
             }
         }
@@ -1567,7 +1273,7 @@ function cetakPro() {
         currentPage.insertBefore(ttdNode, currentFooter);
         let ttdRect = ttdNode.getBoundingClientRect();
         let currentFooterRect = currentFooter.getBoundingClientRect();
-
+        
         if (ttdRect.bottom > (currentFooterRect.top - 5)) {
             currentPage.removeChild(ttdNode);
             pageNum++;
@@ -1685,26 +1391,106 @@ function exportToExcelRapi() {
 }
 
 // =========================================================================
-// MESIN KOMUNIKASI SERVER (DENGAN DOUBLE-LOCK SECURITY + AUTO-RETRY)
+// MESIN KOMUNIKASI SERVER (DENGAN DOUBLE-LOCK SECURITY)
 // =========================================================================
 
-// === HELPER: FETCH DENGAN AUTO-RETRY UNTUK STATUS "BUSY" ===
-// Kalau server bilang "busy" (lock timeout), otomatis retry setelah delay.
-// Maksimal retry 2x sebelum menyerah.
+function simpanKeCloud() {
+    // SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
+    const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
+    let currentDomain = window.location.hostname;
+    
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
+        Swal.fire('Akses Ilegal', 'Aplikasi dijalankan dari server tidak resmi! Koneksi diblokir.', 'error');
+        return; 
+    }
+
+    if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
+    if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
+    let tahun = document.getElementById('selectTahun').value;
+    let dataPayload = [];
+    
+    document.querySelectorAll('.input-database.is-dirty').forEach(inp => {
+        dataPayload.push({ row_id: inp.getAttribute('data-rowid'), penjelasan: inp.value.trim() });
+    });
+
+    if(dataPayload.length === 0) { Swal.fire('Info', 'Belum ada draf baru yang diketik untuk disimpan.', 'info'); return; }
+    
+    // === SIMPAN LANGSUNG - 1 KLIK, 1 POPUP LOADING, 1 HASIL ===
+    Swal.fire({
+        title: 'Menyimpan...',
+        text: 'Mohon tunggu sebentar',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    let fetchOptions = {
+        method: "POST", 
+        body: JSON.stringify({ 
+            secret_key: SECRET_KEY, 
+            tahun: tahun, 
+            kode_skpd: kodeSkpdAktif, 
+            data: dataPayload,
+            user_agent: getUserAgentUntukAudit()
+        })
+    };
+
+    // PAKAI FETCH BIASA - tidak ada retry loop yang ribet
+    fetch(SCRIPT_URL_DATABASE, fetchOptions)
+        .then(r => r.json())
+        .then(res => {
+            if(res.status === 'success') {
+                let stats = res.stats || {};
+                let timingInfo = stats.processing_time_ms 
+                    ? `<br><small><i class="fa-solid fa-stopwatch me-1"></i> ${stats.processing_time_ms/1000} detik</small>` 
+                    : '';
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Disimpan!',
+                    html: `<small class="text-muted">
+                        <i class="fa-solid fa-check me-1"></i> Update: <b>${stats.updated || 0}</b> baris<br>
+                        <i class="fa-solid fa-plus me-1"></i> Baru: <b>${stats.inserted || 0}</b> baris<br>
+                        <i class="fa-solid fa-gauge-high me-1"></i> Sisa kuota: <b>${stats.rate_limit_remaining || '?'}</b>/30
+                    </small>${timingInfo}`,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+                
+                document.querySelectorAll('.input-database.is-dirty').forEach(inp => {
+                    inp.classList.remove('is-dirty');
+                });
+            }
+            else if (res.status === 'busy') {
+                // SERVER SIBUK - kasih pesan singkat, SURUH USER KLIK LAGI sendiri
+                // TIDAK ADA AUTO-RETRY yang bikin popup loading panjang
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Coba Lagi Ya',
+                    html: `<small>Server sedang sibuk.<br>Cukup klik <b>Simpan Draft</b> sekali lagi dalam 5 detik.<br><br>
+                        <b>Tips:</b> Tutup tab Google Sheets yang terbuka.</small>`,
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#f59e0b',
+                    timer: 6000
+                });
+            }
+            else {
+                Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
+            }
+        })
+        .catch(err => Swal.fire('Error', 'Gagal koneksi: ' + err.message, 'error'));
+}
+
+// =========================================================================
+// HELPER: FETCH DENGAN AUTO-RETRY UNTUK STATUS "BUSY"
+// v3.1: HANYA untuk Tarik Data (GET), BUKAN untuk Simpan Draft.
+// Simpan Draft pakai fetch biasa supaya tidak ribet.
+// =========================================================================
 function fetchDenganRetry(url, options, retryCount = 0, maxRetry = 2) {
     return fetch(url, options)
         .then(r => r.json())
         .then(res => {
-            // Kalau server bilang status "busy" dan masih ada retry
             if (res.status === 'busy' && res.retryable && retryCount < maxRetry) {
-                let delaySec = res.retry_in_sec || 30;
-                let delayMs = Math.min(delaySec * 1000, 30000); // maks 30 detik per retry
+                let delayMs = 3000; // 3 detik per retry untuk GET
                 
-                Swal.update({
-                    title: `Server sedang sibuk...`,
-                    html: `<small>Mencoba ulang otomatis dalam ${Math.ceil(delayMs/1000)} detik...<br>(percobaan ${retryCount + 1} dari ${maxRetry})</small>`
-                });
-
                 return new Promise(resolve => {
                     setTimeout(() => {
                         resolve(fetchDenganRetry(url, options, retryCount + 1, maxRetry));
@@ -1715,135 +1501,12 @@ function fetchDenganRetry(url, options, retryCount = 0, maxRetry = 2) {
         });
 }
 
-function simpanKeCloud() {
-    // ??? SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
-    const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
-    let currentDomain = window.location.hostname;
-    
-    if (currentDomain !== DOMAIN_RESMI) {
-        Swal.fire('Akses Ilegal ??', 'Aplikasi dijalankan dari server tidak resmi! Koneksi diblokir demi keamanan.', 'error');
-        return; 
-    }
-    // ==========================================
-
-    if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
-    if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
-    
-    // === v2.5: PASTIKAN IDENTITAS PENGGUNA ADA SEBELUM SIMPAN ===
-    // Kalau belum ada (komputer baru + TTD cloud kosong) → prompt fallback
-    let namaUser = localStorage.getItem('LRA_USER_NAME');
-    if (!namaUser) {
-        promptIdentitasFallback().then(nama => {
-            if (nama) {
-                // Setelah prompt diisi, lanjut simpan
-                _eksekusiSimpanKeCloud();
-            } else {
-                Swal.fire('Dibatalkan', 'Simpan data dibatalkan karena identitas belum diisi.', 'info');
-            }
-        });
-        return;
-    }
-    
-    _eksekusiSimpanKeCloud();
-}
-
-// =========================================================================
-// FUNGSI INTERNAL: EKSEKUSI SIMPAN KE CLOUD (dipisah agar bisa async)
-// =========================================================================
-function _eksekusiSimpanKeCloud() {
-    let tahun = document.getElementById('selectTahun').value;
-    let dataPayload = [];
-    
-    // ?? HANYA SEDOT BARIS YANG PUNYA STEMPEL 'is-dirty' (YANG BARU DIEDIT OLEH USER INI)
-    document.querySelectorAll('.input-database.is-dirty').forEach(inp => {
-        dataPayload.push({ row_id: inp.getAttribute('data-rowid'), penjelasan: inp.value.trim() });
-    });
-
-    if(dataPayload.length === 0) { Swal.fire('Info', 'Belum ada draf baru yang diketik untuk disimpan.', 'info'); return; }
-    Swal.fire({ title: 'Menyimpan Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
-    // === IDENTITAS PENGGUNA UNTUK AUDIT LOG (P3) ===
-    // Sekarang pakai getUserAgentLengkap() yang include nama user + browser info
-    let identity = getUserAgentLengkap();
-
-    // === DETEKSI ADMIN BPKAD UNTUK BYPASS LOCK ===
-    // Hanya admin BPKAD (deteksi dari nama) yang boleh skip lock.
-    // SKPD biasa tetap pakai lock normal (anti-tabrakan 57 SKPD).
-    let isUserAdmin = isAdminBPKAD();
-    
-    let fetchOptions = {
-        method: "POST", 
-        body: JSON.stringify({ 
-            secret_key: SECRET_KEY, 
-            tahun: tahun, 
-            kode_skpd: kodeSkpdAktif, 
-            data: dataPayload,
-            user_agent: identity,
-            admin_bypass: isUserAdmin  // true hanya untuk admin BPKAD
-        })
-    };
-
-    fetchDenganRetry(SCRIPT_URL_DATABASE, fetchOptions)
-        .then(res => {
-            if(res.status === 'success') {
-                // === TAMPILKAN STATISTIK DETAIL DARI SERVER BARU ===
-                let stats = res.stats || {};
-                let pesan = 'Data berhasil disinkronisasi ke server.';
-                if (stats.updated !== undefined || stats.inserted !== undefined) {
-                    let timingInfo = stats.processing_time_ms 
-                        ? `<br><i class="fa-solid fa-stopwatch me-1"></i> Waktu proses: <b>${(stats.processing_time_ms/1000).toFixed(2)} detik</b>`
-                        : '';
-                    let bypassInfo = stats.admin_bypass_used 
-                        ? `<br><span style="color:#d97706;"><i class="fa-solid fa-bolt me-1"></i> <b>Mode Admin BPKAD</b> (anti-tabrakan di-skip untuk testing)</span>`
-                        : '';
-                    pesan = `Sinkronisasi selesai:<br>
-                        <small class="text-muted">
-                            <i class="fa-solid fa-pen-to-square me-1"></i> Update: <b>${stats.updated || 0}</b> baris<br>
-                            <i class="fa-solid fa-plus me-1"></i> Baru: <b>${stats.inserted || 0}</b> baris<br>
-                            <i class="fa-solid fa-check me-1"></i> Tanpa perubahan: <b>${stats.skipped_unchanged || 0}</b> baris<br>
-                            <i class="fa-solid fa-gauge-high me-1"></i> Sisa kuota simpan: <b>${stats.rate_limit_remaining || '?'}</b>/30
-                        </small>
-                        ${timingInfo}${bypassInfo}`;
-                }
-                Swal.fire('Berhasil!', pesan, 'success');
-                
-                // ?? BERSIHKAN STEMPEL SETELAH BERHASIL SIMPAN AGAR TIDAK DIKIRIM ULANG
-                document.querySelectorAll('.input-database.is-dirty').forEach(inp => {
-                    inp.classList.remove('is-dirty');
-                });
-            }
-            else if (res.status === 'busy') {
-                // Sudah retry 2x masih busy → kasih pesan manual + debug info
-                let debugInfo = res.debug_info 
-                    ? `<br><br><details><summary class="small text-muted">Debug Info (klik untuk lihat)</summary>
-                       <pre class="small text-muted" style="text-align: left; white-space: pre-wrap;">${JSON.stringify(res.debug_info, null, 2)}</pre></details>`
-                    : '';
-                Swal.fire({
-                    title: 'Server Sedang Sibuk',
-                    html: `${res.message || 'Server sedang memproses banyak request dari SKPD lain.'}<br><br>
-                        <b>Saran:</b><br>
-                        <small>
-                        • Tutup semua tab Google Sheets yang terbuka di browser<br>
-                        • Tunggu 2 menit, lalu klik Simpan Draft lagi<br>
-                        • Atau gunakan <b>Backup Lokal</b> untuk simpan sementara<br>
-                        • Data Anda tetap aman di layar browser
-                        </small>${debugInfo}`,
-                    icon: 'warning',
-                    confirmButtonText: 'OK, saya tunggu',
-                    confirmButtonColor: '#f59e0b'
-                });
-            }
-            else Swal.fire('Gagal', res.message || 'Terjadi kesalahan.', 'error');
-        })
-        .catch(() => Swal.fire('Error', 'Gagal terkoneksi ke server BPKAD. Cek koneksi internet Anda.', 'error'));
-}
-
 function muatDataDariCloud() {
     // 🛡️ SENSOR ANTI-BAJAKAN (DOMAIN LOCK)
     const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
-    if (currentDomain !== DOMAIN_RESMI) {
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
         Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
         return; 
     }
@@ -1852,12 +1515,12 @@ function muatDataDariCloud() {
     if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
     if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
     let tahun = document.getElementById('selectTahun').value;
-    Swal.fire({ title: 'Menarik Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({ title: 'Menarik Data...', text: 'Mohon tunggu sebentar', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     // INJEKSI KUNCI RAHASIA KE DALAM URL AGAR DIIZINKAN MASUK OLEH GOOGLE SCRIPT
     let fetchUrl = `${SCRIPT_URL_DATABASE}?action=load&tahun=${tahun}&kode_skpd=${kodeSkpdAktif}&secret_key=${SECRET_KEY}`;
 
-    // doGet tidak butuh lock server, tapi tetap pakai retry untuk kasus cold-start
+    // GET pakai retry SILENT (tidak menampilkan popup loading berulang)
     fetchDenganRetry(fetchUrl, { method: "GET" })
         .then(res => {
             if(res.status === 'success') {
@@ -1919,16 +1582,24 @@ function muatDataDariCloud() {
                         count++; 
                     }
                 });
-                Swal.fire('Sukses!', `${count} draf baris berhasil dipulihkan.<br><small class="text-muted">Sumber: ${res.source === 'cache' ? 'Cache Server (cepat)' : 'Database Fresh'}</small>`, 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Data Ditarik!',
+                    html: `<small>${count} baris berhasil dipulihkan<br>
+                        <span class="text-muted">Sumber: ${res.source === 'cache' ? 'Cache Server' : 'Database Fresh'}</span></small>`,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
             } 
             else if (res.status === 'busy') {
                 Swal.fire({
-                    title: 'Server Sedang Sibuk',
-                    html: `Server sedang memproses banyak request dari SKPD lain.<br><br>
-                        <b>Saran:</b> Tunggu 1-2 menit lalu klik <b>Tarik Data</b> lagi.`,
                     icon: 'warning',
-                    confirmButtonText: 'OK, saya tunggu',
-                    confirmButtonColor: '#f59e0b'
+                    title: 'Coba Lagi Ya',
+                    html: `<small>Server sedang sibuk.<br>Cukup klik <b>Tarik Data</b> sekali lagi dalam 5 detik.<br><br>
+                        <b>Tips:</b> Tutup tab Google Sheets yang terbuka.</small>`,
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#f59e0b',
+                    timer: 6000
                 });
             }
             else if (res.status === 'error') {
