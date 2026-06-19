@@ -91,7 +91,7 @@ body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; 
     page-break-inside: avoid;
 }
 
-.cell-penjelasan { vertical-align: middle !important; }
+.cell-penjelasan { vertical-align: top !important; }
 .modal-body-custom { background-color: #f8fafc; }
 
 /* === UI WARNING & MODAL PRO (PREMIUM MINIMALIST) === */
