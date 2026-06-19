@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function() {
     modalKeterangan = new bootstrap.Modal(document.getElementById('modalKeterangan'));
     
     isiDropdownTahunOtomatis();
+	cekKoneksiServer();
     
     // === SENSOR AUTO-SAVE TANDA TANGAN (LOCAL + CLOUD SYNC SILENT) ===
     // Strategi: 
@@ -1329,14 +1330,44 @@ function muatDataDariCloud() {
         Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
         return; 
     }
-    // ==========================================
 
     if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
     if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
+
+    // =========================================================================
+    // 🛡️ REM OTOMATIS: CEK APAKAH ADA DRAF LOKAL YANG BELUM DISIMPAN KE CLOUD
+    // =========================================================================
+    let drafBelumDisimpan = document.querySelectorAll('.input-database.is-dirty').length;
+    if (drafBelumDisimpan > 0) {
+        Swal.fire({
+            title: 'Ada Draf Belum Disimpan!',
+            html: `Anda memiliki <b>${drafBelumDisimpan} rincian</b> yang belum di-Simpan Draft ke Cloud.<br><br>Jika Anda Menarik Data sekarang, ketikan Anda tersebut akan <b>TERTIMPA/HILANG</b> oleh data lama dari server.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Timpa Data Saya (Hapus Draf)',
+            cancelButtonText: 'Batal (Saya Mau Simpan Dulu)'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Hapus stempel is-dirty agar tidak bentrok, lalu lanjut tarik data
+                document.querySelectorAll('.input-database.is-dirty').forEach(inp => inp.classList.remove('is-dirty'));
+                eksekusiTarikDataLRA();
+            }
+        });
+    } else {
+        // Jika aman tidak ada draf menggantung, langsung tarik
+        eksekusiTarikDataLRA();
+    }
+}
+
+// =========================================================================
+// FUNGSI INTI PENARIKAN DATA (DIPISAH AGAR LEBIH RAPI)
+// =========================================================================
+function eksekusiTarikDataLRA() {
     let tahun = document.getElementById('selectTahun').value;
     Swal.fire({ title: 'Menarik Draf...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-    // INJEKSI KUNCI RAHASIA KE DALAM URL AGAR DIIZINKAN MASUK OLEH GOOGLE SCRIPT
     let fetchUrl = `${SCRIPT_URL_DATABASE}?action=load&tahun=${tahun}&kode_skpd=${kodeSkpdAktif}&secret_key=${SECRET_KEY}`;
 
     fetch(fetchUrl)
@@ -1350,7 +1381,6 @@ function muatDataDariCloud() {
                         inp.value = dataServer[rowId]; 
                         let printText = dataServer[rowId];
                         
-                        // KECERDASAN MULTI-GRUP (TIDAK ADA YANG DIUBAH)
                         try { 
                             let parsed = JSON.parse(dataServer[rowId]);
                             let tempText = "";
@@ -1439,10 +1469,6 @@ function muatDataDariCloud() {
             confirmButtonText: 'OK'
         }));
 }
-
-window.addEventListener('beforeunload', function (e) {
-    e.preventDefault(); e.returnValue = ''; 
-});
 
 // ====================================================================
 // MESIN FILTER AI & REKALKULASI TOTAL DINAMIS (KELAS ENTERPRISE)
@@ -1777,4 +1803,41 @@ function eksekusiRestoreLokal(dataServer) {
         
         Swal.fire('Restore Sempurna!', `${count} baris data berhasil dikembalikan dari file Backup Lokal Anda.`, 'success');
     }, 600);
+}
+
+// =========================================================================
+// FUNGSI: RADAR PING SERVER (GELEMBUNG KONEKSI LIVE)
+// =========================================================================
+function cekKoneksiServer() {
+    let badge = document.getElementById('statusKoneksi');
+    let text = document.getElementById('teksKoneksi');
+    let icon = badge.querySelector('i');
+
+    // Jika admin lupa menempelkan URL di script.js
+    if (!SCRIPT_URL_DATABASE || SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) {
+        badge.className = 'connection-badge offline shadow-sm';
+        icon.className = 'fa-solid fa-triangle-exclamation';
+        text.innerText = 'Offline (URL Kosong)';
+        return;
+    }
+
+    // Lakukan ping super ringan ke server Google
+    let urlPing = `${SCRIPT_URL_DATABASE}?secret_key=${SECRET_KEY}&action=ping`;
+    
+    fetch(urlPing)
+        .then(r => r.json())
+        .then(res => {
+            if (res && res.status === 'success') {
+                badge.className = 'connection-badge online shadow-sm';
+                icon.className = 'fa-solid fa-wifi';
+                text.innerText = 'Server Terhubung';
+            } else {
+                throw new Error("Invalid response");
+            }
+        })
+        .catch(err => {
+            badge.className = 'connection-badge offline shadow-sm';
+            icon.className = 'fa-solid fa-server'; 
+            text.innerText = 'Server Offline';
+        });
 }
