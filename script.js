@@ -47,48 +47,145 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // =========================================================================
 // FUNGSI: CEK IDENTITAS PENGGUNA (untuk audit log)
-// Tampilkan prompt sekali saja, simpan nama ke localStorage
+// Versi 2.5: Hapus prompt wajib. Auto-detect nama dari TTD cloud.
+// Prompt hanya muncul sebagai fallback kalau TTD cloud kosong.
 // =========================================================================
 function cekIdentitasPengguna() {
     let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
     
-    if (!namaTersimpan) {
-        // Tampilkan prompt identitas ( Swal.fire dengan input )
-        setTimeout(() => {
-            Swal.fire({
-                title: 'Selamat Datang 👋',
-                html: `
-                    <div style="text-align: left; font-size: 13px; line-height: 1.6;">
-                        Untuk <b>audit log</b> & <b>sync tanda tangan</b>, mohon masukkan nama Anda.<br>
-                        <small class="text-muted">Nama ini dicatat di server saat Anda menyimpan data, agar admin BPKAD tahu siapa yang mengedit.</small>
-                    </div>
-                `,
-                input: 'text',
-                inputPlaceholder: 'Contoh: Bpk. Andi (Dinas Pendidikan)',
-                inputAttributes: { maxlength: 80 },
-                inputValidator: (value) => {
-                    if (!value || value.trim().length < 3) return 'Nama terlalu pendek (min 3 huruf)';
-                },
-                showCancelButton: false,
-                confirmButtonText: 'Simpan & Lanjut',
-                confirmButtonColor: '#0f172a',
-                allowOutsideClick: false,
-                allowEscapeKey: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    let nama = result.value.trim();
-                    localStorage.setItem('LRA_USER_NAME', nama);
-                    Swal.fire({
-                        title: 'Tersimpan!',
-                        html: `Halo <b>${nama}</b> 👋<br><br><small class="text-muted">Nama ini akan otomatis tercatat saat Anda menyimpan data. Untuk mengganti, hapus localStorage browser atau hubungi admin.</small>`,
-                        icon: 'success',
-                        confirmButtonColor: '#10b981',
-                        timer: 3000
-                    });
-                }
-            });
-        }, 800);
+    // Kalau nama sudah ada di localStorage → pakai, tidak perlu prompt
+    if (namaTersimpan) {
+        console.log('✓ Identitas pengguna sudah tersimpan:', namaTersimpan);
+        return; // tidak muncul apa-apa
     }
+    
+    // Kalau belum ada, TUNGGU sampai SKPD upload Excel → TTD cloud load
+    // Jika TTD cloud punya data → auto-set nama dari sana
+    // Jika TTD cloud kosong → baru prompt nama (fallback)
+    // Lihat fungsi muatTTDDariCloud() bagian "auto-set nama"
+    
+    console.log('ℹ️ Identitas belum ada. Akan auto-detect dari TTD cloud setelah upload Excel.');
+}
+
+// =========================================================================
+// FUNGSI: SET IDENTITAS PENGGUNA DARI TTD CLOUD (auto, tanpa prompt)
+// Dipanggil saat TTD cloud berhasil di-load
+// =========================================================================
+function setIdentitasDariTTDCloud(namaTTD) {
+    if (!namaTTD) return;
+    
+    let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
+    
+    // Kalau belum ada nama tersimpan → set otomatis dari TTD cloud
+    if (!namaTersimpan) {
+        localStorage.setItem('LRA_USER_NAME', namaTTD);
+        console.log('✓ Identitas auto-detected dari TTD cloud:', namaTTD);
+        
+        // Beritahu user sekali saja (silent notification, bukan prompt)
+        _tampilkanNotifikasiIdentitas(namaTTD);
+    }
+}
+
+// =========================================================================
+// FUNGSI: TAMPILKAN NOTIFIKASI IDENTITAS (silent, bukan prompt wajib)
+// Muncul di pojok kanan bawah, hilang otomatis 4 detik
+// =========================================================================
+function _tampilkanNotifikasiIdentitas(nama) {
+    let isAdmin = isAdminBPKAD();
+    let peran = isAdmin ? 'Admin BPKAD' : 'Operator SKPD';
+    let icon = isAdmin ? '⚡' : '👤';
+    let warna = isAdmin ? '#f59e0b' : '#10b981';
+    
+    // Buat toast notification
+    let toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+        background: white; border-left: 4px solid ${warna};
+        padding: 12px 20px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px;
+        max-width: 350px; animation: slideIn 0.3s ease;
+    `;
+    toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">${icon}</span>
+            <div>
+                <div style="font-weight: 600; color: #0f172a;">Halo, ${nama}</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                    Terdeteksi sebagai <b style="color: ${warna};">${peran}</b>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Tambahkan animation CSS
+    let style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(toast);
+    
+    // Hapus otomatis setelah 4 detik
+    setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s, transform 0.3s';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// =========================================================================
+// FUNGSI: PROMPT NAMA SEBAGAI FALLBACK (hanya kalau TTD cloud kosong)
+// Dipanggil manual saat user mau simpan data tapi belum ada identitas
+// =========================================================================
+function promptIdentitasFallback() {
+    return new Promise((resolve) => {
+        let namaTersimpan = localStorage.getItem('LRA_USER_NAME');
+        if (namaTersimpan) {
+            resolve(namaTersimpan);
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Identitas Diperlukan 👋',
+            html: `
+                <div style="text-align: left; font-size: 13px; line-height: 1.6;">
+                    Sebelum menyimpan data, mohon masukkan nama Anda.<br><br>
+                    <b>📋 Format yang disarankan:</b><br>
+                    <small class="text-muted">
+                    • Admin BPKAD: <code>Admin BPKAD - Nama</code><br>
+                    • SKPD: <code>Nama (Dinas XXX)</code>
+                    </small><br><br>
+                    <small class="text-muted">Nama akan tersimpan di browser ini. Untuk komputer lain, sistem akan auto-detect dari TTD cloud.</small>
+                </div>
+            `,
+            input: 'text',
+            inputPlaceholder: 'Contoh: Bpk. Budi (Dinas Pendidikan)',
+            inputAttributes: { maxlength: 80 },
+            inputValidator: (value) => {
+                if (!value || value.trim().length < 3) return 'Nama terlalu pendek (min 3 huruf)';
+            },
+            showCancelButton: false,
+            confirmButtonText: 'Simpan & Lanjut',
+            confirmButtonColor: '#0f172a',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                let nama = result.value.trim();
+                localStorage.setItem('LRA_USER_NAME', nama);
+                _tampilkanNotifikasiIdentitas(nama);
+                resolve(nama);
+            } else {
+                resolve(null);
+            }
+        });
+    });
 }
 
 // =========================================================================
@@ -96,6 +193,22 @@ function cekIdentitasPengguna() {
 // =========================================================================
 function getIdentitasPengguna() {
     return localStorage.getItem('LRA_USER_NAME') || 'unknown';
+}
+
+// =========================================================================
+// FUNGSI: CEK APAKAH USER SAAT INI ADALAH ADMIN BPKAD
+// Admin BPKAD boleh bypass lock untuk testing cepat.
+// SKPD tetap pakai lock normal (anti-tabrakan).
+// Deteksi berdasarkan nama yang diinput saat pertama buka aplikasi.
+// =========================================================================
+const ADMIN_BPKAD_KEYWORDS = ['admin', 'bpkad', 'bendahara', 'kabid', 'kepala badan'];
+
+function isAdminBPKAD() {
+    let nama = (localStorage.getItem('LRA_USER_NAME') || '').toLowerCase();
+    if (!nama) return false;
+    
+    // Cek apakah nama mengandung keyword admin
+    return ADMIN_BPKAD_KEYWORDS.some(kw => nama.includes(kw));
 }
 
 // =========================================================================
@@ -212,6 +325,13 @@ function muatTTDDariCloud() {
             localStorage.setItem('TTD_JAB_' + kodeSkpdAktif, data.jabatan || '');
             localStorage.setItem('TTD_NAMA_' + kodeSkpdAktif, data.nama || '');
             localStorage.setItem('TTD_NIP_' + kodeSkpdAktif, data.nip || '');
+            
+            // === AUTO-SET IDENTITAS PENGGUNA DARI TTD CLOUD (v2.5) ===
+            // Pakai "Updated_By" atau "Nama" dari TTD cloud sebagai identitas user
+            let namaUntukIdentitas = data.updated_by || data.nama;
+            if (namaUntukIdentitas) {
+                setIdentitasDariTTDCloud(namaUntukIdentitas);
+            }
             
             ttdCloudLoaded = true;
             perbaruiBadgeTTD('synced', data.updated_at);
@@ -1334,7 +1454,7 @@ function cetakPro() {
         return;
     }
 
-    Swal.fire({ title: 'Sedang Memproses', text: 'Tunggu Sedang Mempersiapkan Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+    Swal.fire({ title: 'Tunggu Sebentar Yah...', text: 'Mesin Cerdas Sedang Menyusun Halaman...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
     setTimeout(() => {
         let mulaiHalaman = parseInt(document.getElementById('inputHalaman').value) || 1;
@@ -1608,6 +1728,29 @@ function simpanKeCloud() {
 
     if(SCRIPT_URL_DATABASE.includes("ISI_DENGAN_URL")) { Swal.fire('Peringatan', 'URL Google Apps Script belum diset.', 'warning'); return; }
     if(!kodeSkpdAktif) { Swal.fire('Error', 'Harap upload LRA Excel terlebih dahulu!', 'warning'); return; }
+    
+    // === v2.5: PASTIKAN IDENTITAS PENGGUNA ADA SEBELUM SIMPAN ===
+    // Kalau belum ada (komputer baru + TTD cloud kosong) → prompt fallback
+    let namaUser = localStorage.getItem('LRA_USER_NAME');
+    if (!namaUser) {
+        promptIdentitasFallback().then(nama => {
+            if (nama) {
+                // Setelah prompt diisi, lanjut simpan
+                _eksekusiSimpanKeCloud();
+            } else {
+                Swal.fire('Dibatalkan', 'Simpan data dibatalkan karena identitas belum diisi.', 'info');
+            }
+        });
+        return;
+    }
+    
+    _eksekusiSimpanKeCloud();
+}
+
+// =========================================================================
+// FUNGSI INTERNAL: EKSEKUSI SIMPAN KE CLOUD (dipisah agar bisa async)
+// =========================================================================
+function _eksekusiSimpanKeCloud() {
     let tahun = document.getElementById('selectTahun').value;
     let dataPayload = [];
     
@@ -1623,6 +1766,11 @@ function simpanKeCloud() {
     // Sekarang pakai getUserAgentLengkap() yang include nama user + browser info
     let identity = getUserAgentLengkap();
 
+    // === DETEKSI ADMIN BPKAD UNTUK BYPASS LOCK ===
+    // Hanya admin BPKAD (deteksi dari nama) yang boleh skip lock.
+    // SKPD biasa tetap pakai lock normal (anti-tabrakan 57 SKPD).
+    let isUserAdmin = isAdminBPKAD();
+    
     let fetchOptions = {
         method: "POST", 
         body: JSON.stringify({ 
@@ -1631,7 +1779,7 @@ function simpanKeCloud() {
             kode_skpd: kodeSkpdAktif, 
             data: dataPayload,
             user_agent: identity,
-            admin_bypass: true  // ← ADMIN TEST MODE: skip lock untuk testing cepat
+            admin_bypass: isUserAdmin  // true hanya untuk admin BPKAD
         })
     };
 
@@ -1641,12 +1789,12 @@ function simpanKeCloud() {
                 // === TAMPILKAN STATISTIK DETAIL DARI SERVER BARU ===
                 let stats = res.stats || {};
                 let pesan = 'Data berhasil disinkronisasi ke server.';
-                if (stats.updated || stats.inserted || stats.skipped_unchanged) {
+                if (stats.updated !== undefined || stats.inserted !== undefined) {
                     let timingInfo = stats.processing_time_ms 
                         ? `<br><i class="fa-solid fa-stopwatch me-1"></i> Waktu proses: <b>${(stats.processing_time_ms/1000).toFixed(2)} detik</b>`
                         : '';
                     let bypassInfo = stats.admin_bypass_used 
-                        ? `<br><span class="text-warning"><i class="fa-solid fa-bolt me-1"></i> <b>Mode Admin Test</b> (lock di-skip)</span>`
+                        ? `<br><span style="color:#d97706;"><i class="fa-solid fa-bolt me-1"></i> <b>Mode Admin BPKAD</b> (anti-tabrakan di-skip untuk testing)</span>`
                         : '';
                     pesan = `Sinkronisasi selesai:<br>
                         <small class="text-muted">
