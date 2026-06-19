@@ -713,8 +713,8 @@ function perbaruiTombolStatus(rowID, printText, realisasi) {
         btn.innerHTML = '<i class="fa-regular fa-pen-to-square text-secondary me-1"></i> Isi Penjelasan';
     } else if (realisasi === 0 && printText.trim() !== '') {
         btn.className = 'btn btn-sm w-100 text-start fw-bold';
-        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
-        btn.innerHTML = '<i class="fa-solid fa-check-double text-success me-1"></i> Murni Tersimpan';
+        btn.style.cssText = "font-family:Arial; font-size:11px; padding: 4px 8px; background-color: #f2e01b; border: 1px solid #bbf7d0; color: #166534; border-radius: 4px;";
+        btn.innerHTML = '<i class="fa-solid fa-check-double text-success me-1"></i> Hanya catatan Tersimpan';
     } else if (Math.abs(selisih) < 1) { 
         if (statusTeks !== "OK") { // KETAHUAN BOHONG
             btn.className = 'btn btn-sm w-100 text-start fw-bold';
@@ -1245,7 +1245,7 @@ function simpanKeCloud() {
     const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
-    if (currentDomain !== DOMAIN_RESMI) {
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
         Swal.fire('Akses Ilegal', 'Aplikasi dijalankan dari server tidak resmi! Koneksi diblokir.', 'error');
         return; 
     }
@@ -1326,7 +1326,7 @@ function muatDataDariCloud() {
     const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
-    if (currentDomain !== DOMAIN_RESMI) {
+    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
         Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
         return; 
     }
