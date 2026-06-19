@@ -1720,7 +1720,7 @@ function simpanKeCloud() {
     const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
-    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
+    if (currentDomain !== DOMAIN_RESMI) {
         Swal.fire('Akses Ilegal ??', 'Aplikasi dijalankan dari server tidak resmi! Koneksi diblokir demi keamanan.', 'error');
         return; 
     }
@@ -1843,7 +1843,7 @@ function muatDataDariCloud() {
     const DOMAIN_RESMI = "bkadakuntansiluwu.github.io"; 
     let currentDomain = window.location.hostname;
     
-    if (currentDomain !== DOMAIN_RESMI && currentDomain !== "localhost" && currentDomain !== "127.0.0.1" && currentDomain !== "") {
+    if (currentDomain !== DOMAIN_RESMI) {
         Swal.fire('Akses Ilegal 🚫', 'Aplikasi dijalankan dari server tidak resmi! Tarik data ditolak.', 'error');
         return; 
     }
