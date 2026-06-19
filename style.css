@@ -200,10 +200,20 @@ body { background-color: #f4f6f8; font-family: "Times New Roman", Times, serif; 
 
 /* === GELEMBUNG KONEKSI SERVER (LIVE RADAR) === */
 .connection-badge {
-    position: fixed; top: 20px; right: 25px; padding: 8px 16px;
-    border-radius: 50px; font-size: 11px; font-family: 'Segoe UI', Arial, sans-serif;
-    font-weight: 700; z-index: 1060; display: flex; align-items: center;
-    gap: 8px; transition: all 0.3s ease; letter-spacing: 0.3px;
+    position: fixed; 
+    bottom: 30px; /* <--- DIUBAH: Pindah ke bawah agar tidak nutupi tombol */
+    right: 30px;  /* <--- DIUBAH: Digeser pas di pojok kanan bawah */
+    padding: 8px 16px;
+    border-radius: 50px; 
+    font-size: 11px; 
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-weight: 700; 
+    z-index: 1060; 
+    display: flex; 
+    align-items: center;
+    gap: 8px; 
+    transition: all 0.3s ease; 
+    letter-spacing: 0.3px;
 }
 .connection-badge.online { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; box-shadow: 0 4px 10px rgba(22, 101, 52, 0.15); }
 .connection-badge.offline { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecdd3; box-shadow: 0 4px 10px rgba(153, 27, 27, 0.15); }
